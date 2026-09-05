@@ -170,13 +170,13 @@ add_action('admin_notices', function() {
     $err = get_transient('navai_license_error');
     if ($err) {
         $msgs = [
-            'license_expired'     => '您的 NavAi 授权已过期，无法检测商业版更新。请续费后重新注册。',
-            'license_disabled'    => '您的 NavAi 授权已被禁用，请联系管理员。',
-            'license_not_found'   => '您的 NavAi 授权密钥无效，请重新注册。',
-            'license_no_access'   => '您的 NavAi 授权不包含此插件，请确认授权范围。',
-            'license_domain_limit'=> '您的 NavAi 授权已达域名绑定上限。',
+            'license_expired'     => '您的高级版授权已过期，无法检测商业版更新。请续费后重新注册。',
+            'license_disabled'    => '您的高级版授权已被禁用，请联系管理员。',
+            'license_not_found'   => '您的高级版授权密钥无效，请重新注册。',
+            'license_no_access'   => '您的高级版授权不包含此插件，请确认授权范围。',
+            'license_domain_limit'=> '您的高级版授权已达域名绑定上限。',
         ];
-        $msg = $msgs[$err] ?? ('您的 NavAi 授权异常（' . $err . '），可能无法获取商业版更新。');
+        $msg = $msgs[$err] ?? ('您的高级版授权异常（' . $err . '），可能无法获取商业版更新。');
         echo '<div class="notice notice-warning"><p>' . $msg . '</p></div>';
         delete_transient('navai_license_error');
     }
@@ -204,7 +204,7 @@ add_filter('themes_api', function ($false, $action, $args) {
     return $false;
 }, 10, 3);
 
-// ===== NavAi - 授权管理 =====
+// ===== 高级版授权管理 =====
 
 if (is_admin()) {
 
@@ -246,8 +246,8 @@ if (is_admin()) {
     // 添加菜单
     function navai_add_menu() {
         add_theme_page(
-            'NavAi 授权',
-            'NavAi 授权',
+            '高级版授权',
+            '高级版授权',
             'manage_options',
             'navai-license',
             'navai_license_page'
@@ -261,7 +261,7 @@ if (is_admin()) {
         $info = $license_key ? navai_get_license_info() : null;
         ?>
         <div class="wrap">
-            <h1><?php echo esc_html('NavAi 授权管理'); ?></h1>
+            <h1><?php echo esc_html('高级版授权管理'); ?></h1>
             <?php settings_errors('navai_license'); ?>
             <?php if ($info && !empty($info['status']) && $info['status'] !== 'invalid'): ?>
             <div class="card" style="max-width:700px;margin-top:20px">

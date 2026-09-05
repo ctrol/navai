@@ -35,7 +35,7 @@ A modern, card-based directory theme for AI tools and resource navigation websit
 1. Upload the theme folder to `/wp-content/themes/` / 将主题文件夹上传到 `/wp-content/themes/`
 2. Activate the theme through the 'Themes' menu in WordPress / 在 WordPress 后台"外观 > 主题"中激活
 3. Go to NavAi Settings to configure logo, favicon, footer content, and ad code / 进入 NavAi 设置配置 Logo、Favicon、页脚内容和广告代码
-4. Register a license key at Appearance > NavAi 授权 to enable commercial version updates / 在"外观 > NavAi 授权"注册授权码以启用商业版更新
+4. Register a license key at Appearance > 高级版授权 to enable commercial version updates / 在"外观 > 高级版授权"注册授权码以启用商业版更新
 
 == Frequently Asked Questions / 常见问题 ==
 
@@ -49,7 +49,7 @@ Go to Theme Settings > General Settings, find the "首页每行网址数" field,
 Go to the admin URL list page, click "导入导航站", enter the navigation site URL, and the system will crawl and extract all tool links automatically. / 进入后台网址列表页，点击"导入导航站"，输入导航站 URL，系统将自动抓取并提取所有工具链接。
 
 = How do I check for theme updates? / 如何检查主题更新？ =
-Go to Theme Settings > General Settings and click the "检查更新" button, or visit the dashboard which auto-checks. Register a license key at Appearance > NavAi 授权 to receive commercial version updates. / 进入主题设置 > 通用设置点击"检查更新"按钮，或访问仪表盘自动检查。在"外观 > NavAi 授权"注册授权码以接收商业版更新。
+Go to Theme Settings > General Settings and click the "检查更新" button, or visit the dashboard which auto-checks. Register a license key at Appearance > 高级版授权 to receive commercial version updates. / 进入主题设置 > 通用设置点击"检查更新"按钮，或访问仪表盘自动检查。在"外观 > 高级版授权"注册授权码以接收商业版更新。
 
 == Changelog / 更新日志 ==
 

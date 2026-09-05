@@ -61,7 +61,7 @@ A modern, card-based directory WordPress theme for AI tools and resource navigat
 1. Upload the `navai` folder to `/wp-content/themes/` / 将 `navai` 文件夹上传到 `/wp-content/themes/`
 2. Activate the theme via Appearance > Themes / 在"外观 > 主题"中激活
 3. Go to NavAi Settings to configure logo, favicon, footer content, and ad code / 进入 NavAi 设置配置 Logo、Favicon、页脚内容和广告代码
-4. Register a license key at Appearance > NavAi 授权 to enable commercial version updates / 在"外观 > NavAi 授权"注册授权码以启用商业版更新
+4. Register a license key at Appearance > 高级版授权 to enable commercial version updates / 在"外观 > 高级版授权"注册授权码以启用商业版更新
 
 ## Directory Structure / 目录结构
 
