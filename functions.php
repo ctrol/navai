@@ -264,13 +264,11 @@ if (is_admin()) {
             <h1><?php echo esc_html('高级版授权管理'); ?></h1>
             <?php settings_errors('navai_license'); ?>
             <style>
-                .navai-license-row { display:flex; gap:20px; margin-top:20px; flex-wrap:wrap; }
-                .navai-license-card { flex:1 1 360px; min-width:300px; }
-                .navai-license-card .card { margin-top:0; max-width:none; }
-                .navai-compare-wrap { display:flex; gap:20px; margin-top:10px; flex-wrap:wrap; }
-                .navai-compare-left { flex:2 1 500px; min-width:0; }
-                .navai-compare-right { flex:1 1 300px; min-width:260px; }
-                .navai-compare-table { width:100%; border-collapse:collapse; }
+                .navai-license-layout { display:flex; gap:20px; margin-top:20px; flex-wrap:wrap; align-items:flex-start; }
+                .navai-license-col-left { flex:1 1 360px; min-width:300px; display:flex; flex-direction:column; gap:20px; }
+                .navai-license-col-right { flex:1.2 1 420px; min-width:320px; display:flex; flex-direction:column; gap:20px; }
+                .navai-license-col-left .card, .navai-license-col-right .card { margin:0; max-width:none; }
+                .navai-compare-table { width:100%; border-collapse:collapse; margin-top:10px; }
                 .navai-compare-table th, .navai-compare-table td { padding:10px 14px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:13px; }
                 .navai-compare-table th { background:#f9f9f9; font-weight:600; }
                 .navai-compare-table .col-free { width:80px; text-align:center; color:#666; }
@@ -278,21 +276,21 @@ if (is_admin()) {
                 .navai-compare-table .check { color:#46b450; font-size:14px; }
                 .navai-compare-table .dash { color:#ccc; font-size:14px; }
                 .navai-compare-table tr:hover { background:#fafafa; }
-                .navai-pro-cta { padding:20px 22px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; }
+                .navai-pro-cta { padding:20px 22px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; margin-top:0; }
                 .navai-pro-cta h3 { margin:0 0 8px; color:#fff; font-size:17px; }
                 .navai-pro-cta .cta-price { font-size:22px; font-weight:700; color:#ffd700; }
                 .navai-pro-cta .cta-features { margin:10px 0 0; padding:0; list-style:none; }
                 .navai-pro-cta .cta-features li { margin:5px 0; opacity:.95; font-size:14px; }
                 .navai-pro-cta .cta-wechat { margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.2); font-size:14px; }
                 .navai-pro-cta .cta-wechat strong { font-size:17px; color:#ffd700; }
-                @media (max-width: 782px) {
-                    .navai-license-row, .navai-compare-wrap { flex-direction:column; }
+                @media (max-width: 960px) {
+                    .navai-license-layout { flex-direction:column; }
                 }
             </style>
 
-            <div class="navai-license-row">
-                <?php if ($info && !empty($info['status']) && $info['status'] !== 'invalid'): ?>
-                <div class="navai-license-card">
+            <div class="navai-license-layout">
+                <div class="navai-license-col-left">
+                    <?php if ($info && !empty($info['status']) && $info['status'] !== 'invalid'): ?>
                     <div class="card">
                         <h2 class="title">授权状态</h2>
                         <table class="form-table">
@@ -304,16 +302,12 @@ if (is_admin()) {
                             <tr><th>可访问插件</th><td><?php $acc = $info['access_plugins'] ?? []; echo $acc ? esc_html(implode(', ', $acc)) : '全部'; ?></td></tr>
                         </table>
                     </div>
-                </div>
-                <?php elseif ($license_key): ?>
-                <div class="navai-license-card">
+                    <?php elseif ($license_key): ?>
                     <div class="card">
                         <h2 class="title">授权状态</h2>
                         <div class="notice notice-warning inline" style="margin:0"><p>已配置授权码，但无法获取授权信息（可能已失效或服务器连接失败）</p></div>
                     </div>
-                </div>
-                <?php endif; ?>
-                <div class="navai-license-card">
+                    <?php endif; ?>
                     <div class="card">
                         <h2 class="title"><?php echo $license_key ? '更换授权' : '注册授权'; ?></h2>
                         <p><?php echo $license_key ? '如需更换授权，输入新的购买码重新注册。' : '输入购买码注册授权，获取商业版更新权限。'; ?></p>
@@ -333,13 +327,10 @@ if (is_admin()) {
                         </form>
                     </div>
                 </div>
-            </div>
-
-            <div class="card" style="margin-top:20px">
-                <h2 class="title">版本功能对比</h2>
-                <p>升级到高级版，解锁全部高级功能，打造更专业的 AI 工具导航站。</p>
-                <div class="navai-compare-wrap">
-                    <div class="navai-compare-left">
+                <div class="navai-license-col-right">
+                    <div class="card">
+                        <h2 class="title">版本功能对比</h2>
+                        <p>升级到高级版，解锁全部高级功能，打造更专业的 AI 工具导航站。</p>
                         <table class="navai-compare-table">
                             <thead>
                                 <tr>
@@ -372,18 +363,16 @@ if (is_admin()) {
                             </tbody>
                         </table>
                     </div>
-                    <div class="navai-compare-right">
-                        <div class="navai-pro-cta">
-                            <h3>🚀 升级到 Pro 版</h3>
-                            <p style="margin:4px 0 0;opacity:.9;font-size:13px">解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
-                            <ul class="cta-features">
-                                <li>✅ Pro 版 <span class="cta-price">39.9 元</span></li>
-                                <li>✅ 代码无加密，可换域名</li>
-                                <li>✅ 持续更新，持续迭代</li>
-                            </ul>
-                            <div class="cta-wechat">
-                                请加微信 <strong>meshfuture</strong> 购买，购买后邀请您加入 Pro 版专属用户群。
-                            </div>
+                    <div class="navai-pro-cta">
+                        <h3>🚀 升级到 Pro 版</h3>
+                        <p style="margin:4px 0 0;opacity:.9;font-size:13px">解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
+                        <ul class="cta-features">
+                            <li>✅ Pro 版 <span class="cta-price">39.9 元</span></li>
+                            <li>✅ 代码无加密，可换域名</li>
+                            <li>✅ 持续更新，持续迭代</li>
+                        </ul>
+                        <div class="cta-wechat">
+                            请加微信 <strong>meshfuture</strong> 购买，购买后邀请您加入 Pro 版专属用户群。
                         </div>
                     </div>
                 </div>
