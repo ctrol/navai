@@ -263,66 +263,81 @@ if (is_admin()) {
         <div class="wrap">
             <h1><?php echo esc_html('高级版授权管理'); ?></h1>
             <?php settings_errors('navai_license'); ?>
-            <?php if ($info && !empty($info['status']) && $info['status'] !== 'invalid'): ?>
-            <div class="card" style="max-width:700px;margin-top:20px">
-                <h2 class="title">授权状态</h2>
-                <table class="form-table">
-                    <tr><th>授权码</th><td><code><?php echo esc_html($license_key); ?></code></td></tr>
-                    <tr><th>状态</th><td><?php $st = $info['status'] ?? ''; echo $st === 'active' ? '<span style="color:#46b450;font-weight:600">有效</span>' : ($st === 'expired' ? '<span style="color:#dc3232;font-weight:600">已过期</span>' : esc_html($st)); ?></td></tr>
-                    <tr><th>套餐</th><td><?php $planMap = ['standard'=>'标准版','premium'=>'高级版','lifetime'=>'永久版']; echo esc_html($planMap[$info['plan'] ?? ''] ?? $info['plan'] ?? '标准版'); ?></td></tr>
-                    <tr><th>到期时间</th><td><?php echo esc_html($info['expires_at'] ?? '永久'); ?></td></tr>
-                    <tr><th>绑定域名</th><td><?php $doms = $info['bound_domains'] ?? []; echo $doms ? esc_html(implode(', ', $doms)) : '无'; ?></td></tr>
-                    <tr><th>可访问插件</th><td><?php $acc = $info['access_plugins'] ?? []; echo $acc ? esc_html(implode(', ', $acc)) : '全部'; ?></td></tr>
-                </table>
+            <style>
+                .navai-license-row { display:flex; gap:20px; margin-top:20px; flex-wrap:wrap; }
+                .navai-license-card { flex:1 1 360px; min-width:300px; }
+                .navai-license-card .card { margin-top:0; max-width:none; }
+                .navai-compare-wrap { display:flex; gap:20px; margin-top:10px; flex-wrap:wrap; }
+                .navai-compare-left { flex:2 1 500px; min-width:0; }
+                .navai-compare-right { flex:1 1 300px; min-width:260px; }
+                .navai-compare-table { width:100%; border-collapse:collapse; }
+                .navai-compare-table th, .navai-compare-table td { padding:10px 14px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:13px; }
+                .navai-compare-table th { background:#f9f9f9; font-weight:600; }
+                .navai-compare-table .col-free { width:80px; text-align:center; color:#666; }
+                .navai-compare-table .col-pro { width:80px; text-align:center; color:#764ba2; font-weight:600; }
+                .navai-compare-table .check { color:#46b450; font-size:14px; }
+                .navai-compare-table .dash { color:#ccc; font-size:14px; }
+                .navai-compare-table tr:hover { background:#fafafa; }
+                .navai-pro-cta { padding:20px 22px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; }
+                .navai-pro-cta h3 { margin:0 0 8px; color:#fff; font-size:17px; }
+                .navai-pro-cta .cta-price { font-size:22px; font-weight:700; color:#ffd700; }
+                .navai-pro-cta .cta-features { margin:10px 0 0; padding:0; list-style:none; }
+                .navai-pro-cta .cta-features li { margin:5px 0; opacity:.95; font-size:14px; }
+                .navai-pro-cta .cta-wechat { margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.2); font-size:14px; }
+                .navai-pro-cta .cta-wechat strong { font-size:17px; color:#ffd700; }
+                @media (max-width: 782px) {
+                    .navai-license-row, .navai-compare-wrap { flex-direction:column; }
+                }
+            </style>
+
+            <div class="navai-license-row">
+                <?php if ($info && !empty($info['status']) && $info['status'] !== 'invalid'): ?>
+                <div class="navai-license-card">
+                    <div class="card">
+                        <h2 class="title">授权状态</h2>
+                        <table class="form-table">
+                            <tr><th>授权码</th><td><code><?php echo esc_html($license_key); ?></code></td></tr>
+                            <tr><th>状态</th><td><?php $st = $info['status'] ?? ''; echo $st === 'active' ? '<span style="color:#46b450;font-weight:600">有效</span>' : ($st === 'expired' ? '<span style="color:#dc3232;font-weight:600">已过期</span>' : esc_html($st)); ?></td></tr>
+                            <tr><th>套餐</th><td><?php $planMap = ['standard'=>'标准版','premium'=>'高级版','lifetime'=>'永久版']; echo esc_html($planMap[$info['plan'] ?? ''] ?? $info['plan'] ?? '标准版'); ?></td></tr>
+                            <tr><th>到期时间</th><td><?php echo esc_html($info['expires_at'] ?? '永久'); ?></td></tr>
+                            <tr><th>绑定域名</th><td><?php $doms = $info['bound_domains'] ?? []; echo $doms ? esc_html(implode(', ', $doms)) : '无'; ?></td></tr>
+                            <tr><th>可访问插件</th><td><?php $acc = $info['access_plugins'] ?? []; echo $acc ? esc_html(implode(', ', $acc)) : '全部'; ?></td></tr>
+                        </table>
+                    </div>
+                </div>
+                <?php elseif ($license_key): ?>
+                <div class="navai-license-card">
+                    <div class="card">
+                        <h2 class="title">授权状态</h2>
+                        <div class="notice notice-warning inline" style="margin:0"><p>已配置授权码，但无法获取授权信息（可能已失效或服务器连接失败）</p></div>
+                    </div>
+                </div>
+                <?php endif; ?>
+                <div class="navai-license-card">
+                    <div class="card">
+                        <h2 class="title"><?php echo $license_key ? '更换授权' : '注册授权'; ?></h2>
+                        <p><?php echo $license_key ? '如需更换授权，输入新的购买码重新注册。' : '输入购买码注册授权，获取商业版更新权限。'; ?></p>
+                        <form method="post">
+                            <?php wp_nonce_field('navai_register', 'navai_nonce'); ?>
+                            <table class="form-table">
+                                <tr>
+                                    <th><label for="navai_pc">购买码</label></th>
+                                    <td><input type="text" name="navai_purchase_code" id="navai_pc" class="regular-text" required placeholder="请输入购买码"></td>
+                                </tr>
+                                <tr>
+                                    <th><label for="navai_em">邮箱</label></th>
+                                    <td><input type="email" name="navai_email" id="navai_em" class="regular-text" placeholder="选填，用于接收授权通知"></td>
+                                </tr>
+                            </table>
+                            <p class="submit"><button type="submit" class="button button-primary"><?php echo $license_key ? '更换授权' : '注册授权'; ?></button></p>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <?php elseif ($license_key): ?>
-            <div class="notice notice-warning inline"><p>已配置授权码，但无法获取授权信息（可能已失效或服务器连接失败）</p></div>
-            <?php endif; ?>
-            <div class="card" style="max-width:700px;margin-top:20px">
-                <h2 class="title"><?php echo $license_key ? '更换授权' : '注册授权'; ?></h2>
-                <p><?php echo $license_key ? '如需更换授权，输入新的购买码重新注册。' : '输入购买码注册授权，获取商业版更新权限。'; ?></p>
-                <form method="post">
-                    <?php wp_nonce_field('navai_register', 'navai_nonce'); ?>
-                    <table class="form-table">
-                        <tr>
-                            <th><label for="navai_pc">购买码</label></th>
-                            <td><input type="text" name="navai_purchase_code" id="navai_pc" class="regular-text" required placeholder="请输入购买码"></td>
-                        </tr>
-                        <tr>
-                            <th><label for="navai_em">邮箱</label></th>
-                            <td><input type="email" name="navai_email" id="navai_em" class="regular-text" placeholder="选填，用于接收授权通知"></td>
-                        </tr>
-                    </table>
-                    <p class="submit"><button type="submit" class="button button-primary"><?php echo $license_key ? '更换授权' : '注册授权'; ?></button></p>
-                </form>
-            </div>
-            <div class="card" style="max-width:100%;margin-top:20px">
+
+            <div class="card" style="margin-top:20px">
                 <h2 class="title">版本功能对比</h2>
                 <p>升级到高级版，解锁全部高级功能，打造更专业的 AI 工具导航站。</p>
-                <style>
-                    .navai-compare-wrap { display:flex; gap:20px; margin-top:10px; flex-wrap:wrap; }
-                    .navai-compare-left { flex:1 1 520px; min-width:0; }
-                    .navai-compare-right { flex:0 0 320px; min-width:280px; }
-                    .navai-compare-table { width:100%; border-collapse:collapse; }
-                    .navai-compare-table th, .navai-compare-table td { padding:10px 14px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:13px; }
-                    .navai-compare-table th { background:#f9f9f9; font-weight:600; }
-                    .navai-compare-table .col-free { width:80px; text-align:center; color:#666; }
-                    .navai-compare-table .col-pro { width:80px; text-align:center; color:#764ba2; font-weight:600; }
-                    .navai-compare-table .check { color:#46b450; font-size:14px; }
-                    .navai-compare-table .dash { color:#ccc; font-size:14px; }
-                    .navai-compare-table tr:hover { background:#fafafa; }
-                    .navai-pro-cta { padding:20px 22px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; }
-                    .navai-pro-cta h3 { margin:0 0 8px; color:#fff; font-size:17px; }
-                    .navai-pro-cta .cta-price { font-size:22px; font-weight:700; color:#ffd700; }
-                    .navai-pro-cta .cta-features { margin:10px 0 0; padding:0; list-style:none; }
-                    .navai-pro-cta .cta-features li { margin:5px 0; opacity:.95; font-size:14px; }
-                    .navai-pro-cta .cta-wechat { margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.2); font-size:14px; }
-                    .navai-pro-cta .cta-wechat strong { font-size:17px; color:#ffd700; }
-                    @media (max-width: 960px) {
-                        .navai-compare-wrap { flex-direction:column; }
-                        .navai-compare-right { flex:1 1 auto; }
-                    }
-                </style>
                 <div class="navai-compare-wrap">
                     <div class="navai-compare-left">
                         <table class="navai-compare-table">
