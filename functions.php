@@ -300,63 +300,76 @@ if (is_admin()) {
                 <h2 class="title">版本功能对比</h2>
                 <p>升级到高级版，解锁全部高级功能，打造更专业的 AI 工具导航站。</p>
                 <style>
-                    .navai-compare-table { width:100%; border-collapse:collapse; margin-top:10px; }
-                    .navai-compare-table th, .navai-compare-table td { padding:12px 16px; text-align:left; border-bottom:1px solid #f0f0f0; }
+                    .navai-compare-wrap { display:flex; gap:20px; margin-top:10px; flex-wrap:wrap; }
+                    .navai-compare-left { flex:1 1 520px; min-width:0; }
+                    .navai-compare-right { flex:0 0 320px; min-width:280px; }
+                    .navai-compare-table { width:100%; border-collapse:collapse; }
+                    .navai-compare-table th, .navai-compare-table td { padding:10px 14px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:13px; }
                     .navai-compare-table th { background:#f9f9f9; font-weight:600; }
-                    .navai-compare-table .col-free { width:120px; text-align:center; color:#666; }
-                    .navai-compare-table .col-pro { width:120px; text-align:center; color:#764ba2; font-weight:600; }
-                    .navai-compare-table .check { color:#46b450; font-size:16px; }
-                    .navai-compare-table .dash { color:#ccc; font-size:16px; }
+                    .navai-compare-table .col-free { width:80px; text-align:center; color:#666; }
+                    .navai-compare-table .col-pro { width:80px; text-align:center; color:#764ba2; font-weight:600; }
+                    .navai-compare-table .check { color:#46b450; font-size:14px; }
+                    .navai-compare-table .dash { color:#ccc; font-size:14px; }
                     .navai-compare-table tr:hover { background:#fafafa; }
-                    .navai-pro-cta { margin-top:20px; padding:20px 24px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; }
-                    .navai-pro-cta h3 { margin:0 0 8px; color:#fff; font-size:18px; }
-                    .navai-pro-cta .cta-price { font-size:24px; font-weight:700; color:#ffd700; }
+                    .navai-pro-cta { padding:20px 22px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; }
+                    .navai-pro-cta h3 { margin:0 0 8px; color:#fff; font-size:17px; }
+                    .navai-pro-cta .cta-price { font-size:22px; font-weight:700; color:#ffd700; }
                     .navai-pro-cta .cta-features { margin:10px 0 0; padding:0; list-style:none; }
-                    .navai-pro-cta .cta-features li { margin:6px 0; opacity:.95; }
-                    .navai-pro-cta .cta-wechat { margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.2); font-size:15px; }
-                    .navai-pro-cta .cta-wechat strong { font-size:18px; color:#ffd700; }
+                    .navai-pro-cta .cta-features li { margin:5px 0; opacity:.95; font-size:14px; }
+                    .navai-pro-cta .cta-wechat { margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.2); font-size:14px; }
+                    .navai-pro-cta .cta-wechat strong { font-size:17px; color:#ffd700; }
+                    @media (max-width: 960px) {
+                        .navai-compare-wrap { flex-direction:column; }
+                        .navai-compare-right { flex:1 1 auto; }
+                    }
                 </style>
-                <table class="navai-compare-table">
-                    <thead>
-                        <tr>
-                            <th>功能</th>
-                            <th class="col-free">免费版</th>
-                            <th class="col-pro">高级版</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>卡片式导航布局</td><td class="col-free"><span class="check">✅</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>分类管理</td><td class="col-free"><span class="check">✅</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>基础搜索</td><td class="col-free"><span class="check">✅</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>会员系统 &amp; 个人中心</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>前端用户投稿</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>收藏夹 &amp; 文件夹分组</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>网址合集分享</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>5星评分系统</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>评论增强（投票/热度）</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>失效举报</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>一键收藏书签工具</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>AJAX 实时搜索</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>暗色模式</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>PWA 支持（安装到桌面）</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>排行榜页面</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>批量导入 / CSV 导出</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>数据统计仪表盘</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>REST API 接口</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>安全加固</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                        <tr><td>SEO 增强</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
-                    </tbody>
-                </table>
-                <div class="navai-pro-cta">
-                    <h3>🚀 升级到 Pro 版</h3>
-                    <p>解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
-                    <ul class="cta-features">
-                        <li>✅ Pro 版 <span class="cta-price">39.9 元</span></li>
-                        <li>✅ 代码无加密，可换域名</li>
-                        <li>✅ 持续更新，持续迭代</li>
-                    </ul>
-                    <div class="cta-wechat">
-                        请加微信 <strong>meshfuture</strong> 购买，购买后邀请您加入 Pro 版专属用户群。
+                <div class="navai-compare-wrap">
+                    <div class="navai-compare-left">
+                        <table class="navai-compare-table">
+                            <thead>
+                                <tr>
+                                    <th>功能</th>
+                                    <th class="col-free">免费版</th>
+                                    <th class="col-pro">高级版</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>卡片式导航布局</td><td class="col-free"><span class="check">✅</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>分类管理</td><td class="col-free"><span class="check">✅</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>基础搜索</td><td class="col-free"><span class="check">✅</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>会员系统 &amp; 个人中心</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>前端用户投稿</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>收藏夹 &amp; 文件夹分组</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>网址合集分享</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>5星评分系统</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>评论增强（投票/热度）</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>失效举报</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>一键收藏书签工具</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>AJAX 实时搜索</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>暗色模式</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>PWA 支持（安装到桌面）</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>排行榜页面</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>批量导入 / CSV 导出</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>数据统计仪表盘</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>REST API 接口</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>安全加固</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                                <tr><td>SEO 增强</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="navai-compare-right">
+                        <div class="navai-pro-cta">
+                            <h3>🚀 升级到 Pro 版</h3>
+                            <p style="margin:4px 0 0;opacity:.9;font-size:13px">解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
+                            <ul class="cta-features">
+                                <li>✅ Pro 版 <span class="cta-price">39.9 元</span></li>
+                                <li>✅ 代码无加密，可换域名</li>
+                                <li>✅ 持续更新，持续迭代</li>
+                            </ul>
+                            <div class="cta-wechat">
+                                请加微信 <strong>meshfuture</strong> 购买，购买后邀请您加入 Pro 版专属用户群。
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
