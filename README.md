@@ -7,7 +7,7 @@ A modern, card-based directory WordPress theme for AI tools and resource navigat
 ## Theme Info / 主题信息
 
 - **Author / 作者**: 老九
-- **Version / 版本**: 1.1.0
+- **Version / 版本**: 1.1.1
 - **License / 许可证**: GPL-2.0+
 - **Requires WordPress / 最低 WordPress 版本**: 5.0
 - **Tested up to / 测试到**: 6.7

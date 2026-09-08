@@ -4,7 +4,7 @@
  *
  * @package NavAi
  * @author 老九
- * @version 1.1.0
+ * @version 1.1.1
  * @license GPL-2.0+
  */
 

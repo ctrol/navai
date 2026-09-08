@@ -3,7 +3,7 @@ Contributors: ctrol
 Requires at least: 5.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,11 @@ Go to the admin URL list page, click "导入导航站", enter the navigation sit
 Go to Theme Settings > General Settings and click the "检查更新" button, or visit the dashboard which auto-checks. Register a license key at Appearance > 高级版授权 to receive commercial version updates. / 进入主题设置 > 通用设置点击"检查更新"按钮，或访问仪表盘自动检查。在"外观 > 高级版授权"注册授权码以接收商业版更新。
 
 == Changelog / 更新日志 ==
+
+= 1.1.1 =
+* 高级版授权页面全面优化：左右两栏等宽布局（左栏授权状态+更换授权，右栏购买引导+功能对比表），购买引导移至顶部，窄屏自动堆叠。
+* 「NavAi授权」菜单改名为「高级版授权」，统一所有授权相关提示文案。
+* 新增 Pro 版购买引导：功能对比表 20 项功能对比，微信联系方式（meshfuture），39.9元无加密可换域名。
 
 = 1.1.0 =
 * 版本号重置为 1.1.0，统一版本管理体系，合并所有历史更新日志。
