@@ -308,11 +308,13 @@ if (is_admin()) {
                     .navai-compare-table .check { color:#46b450; font-size:16px; }
                     .navai-compare-table .dash { color:#ccc; font-size:16px; }
                     .navai-compare-table tr:hover { background:#fafafa; }
-                    .navai-pro-cta { margin-top:20px; padding:16px 20px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
-                    .navai-pro-cta h3 { margin:0; color:#fff; font-size:18px; }
-                    .navai-pro-cta p { margin:4px 0 0; opacity:.9; }
-                    .navai-pro-cta .button-buy { display:inline-block; padding:10px 24px; background:#fff; color:#764ba2; border-radius:6px; text-decoration:none; font-weight:600; transition:all .2s; }
-                    .navai-pro-cta .button-buy:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.15); }
+                    .navai-pro-cta { margin-top:20px; padding:20px 24px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:8px; color:#fff; }
+                    .navai-pro-cta h3 { margin:0 0 8px; color:#fff; font-size:18px; }
+                    .navai-pro-cta .cta-price { font-size:24px; font-weight:700; color:#ffd700; }
+                    .navai-pro-cta .cta-features { margin:10px 0 0; padding:0; list-style:none; }
+                    .navai-pro-cta .cta-features li { margin:6px 0; opacity:.95; }
+                    .navai-pro-cta .cta-wechat { margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.2); font-size:15px; }
+                    .navai-pro-cta .cta-wechat strong { font-size:18px; color:#ffd700; }
                 </style>
                 <table class="navai-compare-table">
                     <thead>
@@ -346,11 +348,16 @@ if (is_admin()) {
                     </tbody>
                 </table>
                 <div class="navai-pro-cta">
-                    <div>
-                        <h3>🚀 升级到高级版</h3>
-                        <p>解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
+                    <h3>🚀 升级到 Pro 版</h3>
+                    <p>解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
+                    <ul class="cta-features">
+                        <li>✅ Pro 版 <span class="cta-price">39.9 元</span></li>
+                        <li>✅ 代码无加密，可换域名</li>
+                        <li>✅ 持续更新，持续迭代</li>
+                    </ul>
+                    <div class="cta-wechat">
+                        请加微信 <strong>meshfuture</strong> 购买，购买后邀请您加入 Pro 版专属用户群。
                     </div>
-                    <a href="https://plugsrv.easynas.eu.org/buy?slug=navai" target="_blank" class="button-buy">立即购买 →</a>
                 </div>
             </div>
         </div>
