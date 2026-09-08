@@ -265,8 +265,8 @@ if (is_admin()) {
             <?php settings_errors('navai_license'); ?>
             <style>
                 .navai-license-layout { display:flex; gap:20px; margin-top:20px; flex-wrap:wrap; align-items:flex-start; }
-                .navai-license-col-left { flex:1 1 360px; min-width:300px; display:flex; flex-direction:column; gap:20px; }
-                .navai-license-col-right { flex:1.2 1 420px; min-width:320px; display:flex; flex-direction:column; gap:20px; }
+                .navai-license-col-left { flex:1 1 0; min-width:300px; display:flex; flex-direction:column; gap:20px; }
+                .navai-license-col-right { flex:1 1 0; min-width:300px; display:flex; flex-direction:column; gap:20px; }
                 .navai-license-col-left .card, .navai-license-col-right .card { margin:0; max-width:none; }
                 .navai-compare-table { width:100%; border-collapse:collapse; margin-top:10px; }
                 .navai-compare-table th, .navai-compare-table td { padding:10px 14px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:13px; }
