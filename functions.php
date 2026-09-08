@@ -328,6 +328,18 @@ if (is_admin()) {
                     </div>
                 </div>
                 <div class="navai-license-col-right">
+                    <div class="navai-pro-cta">
+                        <h3>🚀 升级到 Pro 版</h3>
+                        <p style="margin:4px 0 0;opacity:.9;font-size:13px">解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
+                        <ul class="cta-features">
+                            <li>✅ Pro 版 <span class="cta-price">39.9 元</span></li>
+                            <li>✅ 代码无加密，可换域名</li>
+                            <li>✅ 持续更新，持续迭代</li>
+                        </ul>
+                        <div class="cta-wechat">
+                            请加微信 <strong>meshfuture</strong> 购买，购买后邀请您加入 Pro 版专属用户群。
+                        </div>
+                    </div>
                     <div class="card">
                         <h2 class="title">版本功能对比</h2>
                         <p>升级到高级版，解锁全部高级功能，打造更专业的 AI 工具导航站。</p>
@@ -362,18 +374,6 @@ if (is_admin()) {
                                 <tr><td>SEO 增强</td><td class="col-free"><span class="dash">—</span></td><td class="col-pro"><span class="check">✅</span></td></tr>
                             </tbody>
                         </table>
-                    </div>
-                    <div class="navai-pro-cta">
-                        <h3>🚀 升级到 Pro 版</h3>
-                        <p style="margin:4px 0 0;opacity:.9;font-size:13px">解锁全部 17 项高级功能，打造专业级 AI 工具导航站</p>
-                        <ul class="cta-features">
-                            <li>✅ Pro 版 <span class="cta-price">39.9 元</span></li>
-                            <li>✅ 代码无加密，可换域名</li>
-                            <li>✅ 持续更新，持续迭代</li>
-                        </ul>
-                        <div class="cta-wechat">
-                            请加微信 <strong>meshfuture</strong> 购买，购买后邀请您加入 Pro 版专属用户群。
-                        </div>
                     </div>
                 </div>
             </div>
