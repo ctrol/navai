@@ -716,7 +716,23 @@ function navai_visits_orderby($query) {
 		$query->set('orderby', 'meta_value_num');
 	}
 }
-add_action('pre_get_posts', 'navai_visits_orderby');
+	add_action('pre_get_posts', 'navai_visits_orderby');
+
+/**
+ * 分类归档页每页显示150张卡片（5列×15行）
+ *
+ * @param WP_Query $query 查询对象
+ */
+function navai_category_posts_per_page($query) {
+	if (is_admin() || ! $query->is_main_query()) {
+		return;
+	}
+
+	if (is_tax('ai_category')) {
+		$query->set('posts_per_page', 150);
+	}
+}
+add_action('pre_get_posts', 'navai_category_posts_per_page');
 
 /**
  * 渲染自定义列内容
