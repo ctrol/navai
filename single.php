@@ -28,6 +28,7 @@ $site_icon_url = '';
 $is_hot        = false;
 $is_new        = false;
 $categories    = false;
+$clean_title   = navai_get_clean_title($post_id);
 
 // 如果是AI工具类型
 if ('ai_tool' === $post_type ) {
@@ -77,7 +78,7 @@ if (!$ranking_query->have_posts()) {
 	<!-- 顶部信息栏 -->
 	<div class="detail-header">
 		<div class="detail-header-main">
-			<h1 class="detail-title"><?php the_title(); ?></h1>
+			<h1 class="detail-title"><?php echo esc_html($clean_title); ?></h1>
 
 			<div class="detail-meta">
 				<span class="detail-meta-item">
@@ -98,7 +99,7 @@ if (!$ranking_query->have_posts()) {
 				<?php endif; ?>
 			</div>
 
-			<p class="detail-subtitle"><?php echo esc_html(wp_trim_words(get_the_excerpt(), 30)); ?></p>
+			<p class="detail-subtitle"><?php echo esc_html(wp_trim_words(navai_decode_entities(get_the_excerpt()), 30)); ?></p>
 
 			<div class="detail-info-table">
 				<div class="detail-info-row">
@@ -162,20 +163,20 @@ if (!$ranking_query->have_posts()) {
 				<div class="detail-preview-body">
 					<div class="detail-favicon">
 						<?php if ($site_icon_url) : ?>
-							<img src="<?php echo esc_url($site_icon_url); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" width="16" height="16">
+							<img src="<?php echo esc_url($site_icon_url); ?>" alt="<?php echo esc_attr($clean_title); ?>" width="16" height="16">
 						<?php else : ?>
 							<i data-lucide="globe" style="width:16px;height:16px;"></i>
 						<?php endif; ?>
-						<span><?php echo esc_html(get_the_title()); ?></span>
+						<span><?php echo esc_html($clean_title); ?></span>
 					</div>
 					<div class="detail-screenshot">
 						<?php if ( ! empty($website_url)) : ?>
-							<img src="https://s0.wp.com/mshots/v1/<?php echo esc_url($website_url); ?>?w=456&h=300" alt="<?php echo esc_attr(get_the_title() . ' ' . esc_attr__('网页截图', 'navai')); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" loading="lazy">
+							<img src="https://s0.wp.com/mshots/v1/<?php echo esc_url($website_url); ?>?w=456&h=300" alt="<?php echo esc_attr($clean_title . ' ' . esc_attr__('网页截图', 'navai')); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" loading="lazy">
 							<div class="detail-screenshot-placeholder" style="display:none;">
 								<i data-lucide="image" style="width:48px;height:48px;color:var(--gray-300);"></i>
 							</div>
 						<?php elseif ($thumbnail) : ?>
-							<img src="<?php echo esc_url($thumbnail); ?>" alt="<?php echo esc_attr(get_the_title() . ' ' . esc_attr__('网页截图', 'navai')); ?>">
+							<img src="<?php echo esc_url($thumbnail); ?>" alt="<?php echo esc_attr($clean_title . ' ' . esc_attr__('网页截图', 'navai')); ?>">
 						<?php else : ?>
 							<div class="detail-screenshot-placeholder">
 								<i data-lucide="image" style="width:48px;height:48px;color:var(--gray-300);"></i>
@@ -227,7 +228,7 @@ if (!$ranking_query->have_posts()) {
 			<div class="detail-related">
 				<h3 class="detail-related-title">
 					<i data-lucide="tag"></i>
-					<?php printf(esc_html__('%s相关导航', 'navai'), esc_html(get_the_title())); ?>
+					<?php printf(esc_html__('%s相关导航', 'navai'), esc_html($clean_title)); ?>
 				</h3>
 				<div class="detail-related-grid">
 					<?php while ($related_query->have_posts()) : $related_query->the_post(); ?>
@@ -236,7 +237,8 @@ if (!$ranking_query->have_posts()) {
 						$related_url     = get_post_meta($related_id, '_website_url', true);
 						$related_icon    = get_post_meta($related_id, '_site_icon_url', true);
 						$related_thumb   = get_the_post_thumbnail_url($related_id, 'thumbnail');
-						$related_excerpt = wp_trim_words(get_the_excerpt(), 15);
+						$related_clean_title = navai_get_clean_title($related_id);
+						$related_excerpt = wp_trim_words(navai_decode_entities(get_the_excerpt()), 15);
 						?>
 						<div class="detail-related-item" data-post-id="<?php echo esc_attr($related_id); ?>" title="<?php echo esc_attr($related_excerpt); ?>">
 							<a href="<?php echo $related_url ? esc_url($related_url) : esc_url(get_permalink()); ?>"
@@ -244,16 +246,16 @@ if (!$ranking_query->have_posts()) {
                                target="_blank"
                                rel="noopener noreferrer">
 								<?php if ($related_icon) : ?>
-									<img src="<?php echo esc_url($related_icon); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-									<span style="display:none;"><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+									<img src="<?php echo esc_url($related_icon); ?>" alt="<?php echo esc_attr($related_clean_title); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+									<span style="display:none;"><?php echo esc_html(mb_substr($related_clean_title, 0, 1, 'UTF-8')); ?></span>
 								<?php elseif ($related_thumb) : ?>
-									<img src="<?php echo esc_url($related_thumb); ?>" alt="<?php echo esc_attr(get_the_title()); ?>">
+									<img src="<?php echo esc_url($related_thumb); ?>" alt="<?php echo esc_attr($related_clean_title); ?>">
 								<?php else : ?>
-									<span><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+									<span><?php echo esc_html(mb_substr($related_clean_title, 0, 1, 'UTF-8')); ?></span>
 								<?php endif; ?>
 							</a>
 							<a href="<?php echo esc_url(get_permalink()); ?>" class="detail-related-body">
-								<h4 class="detail-related-name"><?php the_title(); ?></h4>
+								<h4 class="detail-related-name"><?php echo esc_html($related_clean_title); ?></h4>
 								<p class="detail-related-desc"><?php echo esc_html($related_excerpt); ?></p>
 							</a>
 						</div>
@@ -290,10 +292,11 @@ if (!$ranking_query->have_posts()) {
 						$rank = 1;
 						while ($ranking_query->have_posts()) : $ranking_query->the_post();
 							$rank_id     = get_the_ID();
-							$rank_url    = get_post_meta($rank_id, '_website_url', true);
-							$rank_icon   = get_post_meta($rank_id, '_site_icon_url', true);
-							$rank_thumb  = get_the_post_thumbnail_url($rank_id, 'thumbnail');
-							$rank_desc   = wp_trim_words(get_the_excerpt(), 20);
+						$rank_url    = get_post_meta($rank_id, '_website_url', true);
+						$rank_icon   = get_post_meta($rank_id, '_site_icon_url', true);
+						$rank_thumb  = get_the_post_thumbnail_url($rank_id, 'thumbnail');
+						$rank_clean_title = navai_get_clean_title($rank_id);
+						$rank_desc   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 20);
 						?>
 						<div class="detail-ranking-item" data-post-id="<?php echo esc_attr($rank_id); ?>" title="<?php echo esc_attr($rank_desc); ?>">
 							<span class="detail-ranking-num"><?php echo $rank; ?></span>
@@ -302,16 +305,16 @@ if (!$ranking_query->have_posts()) {
                                target="_blank"
                                rel="noopener noreferrer">
 								<?php if ($rank_icon) : ?>
-									<img src="<?php echo esc_url($rank_icon); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-									<span style="display:none;"><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+									<img src="<?php echo esc_url($rank_icon); ?>" alt="<?php echo esc_attr($rank_clean_title); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+									<span style="display:none;"><?php echo esc_html(mb_substr($rank_clean_title, 0, 1, 'UTF-8')); ?></span>
 								<?php elseif ($rank_thumb) : ?>
-									<img src="<?php echo esc_url($rank_thumb); ?>" alt="<?php echo esc_attr(get_the_title()); ?>">
+									<img src="<?php echo esc_url($rank_thumb); ?>" alt="<?php echo esc_attr($rank_clean_title); ?>">
 								<?php else : ?>
-									<span><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+									<span><?php echo esc_html(mb_substr($rank_clean_title, 0, 1, 'UTF-8')); ?></span>
 								<?php endif; ?>
 							</a>
 							<a href="<?php echo esc_url(get_permalink()); ?>" class="detail-ranking-info">
-								<h4 class="detail-ranking-name"><?php the_title(); ?></h4>
+								<h4 class="detail-ranking-name"><?php echo esc_html($rank_clean_title); ?></h4>
 								<p class="detail-ranking-desc"><?php echo esc_html($rank_desc); ?></p>
 							</a>
 						</div>

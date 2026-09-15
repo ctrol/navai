@@ -70,7 +70,7 @@ get_sidebar();
 			}
 
 			$thumbnail = get_the_post_thumbnail_url($post_id, 'thumbnail');
-			$excerpt   = wp_trim_words(get_the_excerpt(), 12);
+			$excerpt   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 12);
 
 			// 获取该文章所属的分类ID
 			$post_terms = get_the_terms($post_id, 'ai_category');
@@ -92,10 +92,10 @@ get_sidebar();
 				$card_icon_color = wp_rand(1, 8);
 			}
 			$card_thumbnail = get_the_post_thumbnail_url($card_post_id, 'thumbnail');
-			$card_excerpt   = wp_trim_words(get_the_excerpt(), 12);
+			$card_excerpt   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 12);
 
-			// 标题截断：超过8个字时截断并添加省略号
-			$card_full_title = get_the_title();
+			// 标题截断：超过8个字时截断并添加省略号（先解码HTML数字实体，避免显示 &#8213; 之类字面文本）
+			$card_full_title = navai_get_clean_title($card_post_id);
 			if (mb_strlen($card_full_title, 'UTF-8') > 8) {
 				$card_title = mb_substr($card_full_title, 0, 8, 'UTF-8') . '...';
 			} else {

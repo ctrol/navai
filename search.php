@@ -41,10 +41,10 @@ get_sidebar();
 					}
 
 					$thumbnail = get_the_post_thumbnail_url($post_id, 'thumbnail');
-					$excerpt   = wp_trim_words(get_the_excerpt(), 15);
+					$excerpt   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 15);
 
-					// 标题截断：超过8个字时截断并添加省略号
-					$full_title = get_the_title();
+					// 标题截断：超过8个字时截断并添加省略号（先解码HTML数字实体，避免显示 &#8213; 之类字面文本）
+					$full_title = navai_get_clean_title($post_id);
 					if (mb_strlen($full_title, 'UTF-8') > 8) {
 						$short_title = mb_substr($full_title, 0, 8, 'UTF-8') . '...';
 					} else {
@@ -74,7 +74,7 @@ get_sidebar();
 					</a>
 				<?php } else { ?>
 					<?php
-						$other_full_title = get_the_title();
+						$other_full_title = navai_get_clean_title($post_id);
 						$other_short_title = mb_strlen($other_full_title, 'UTF-8') > 8
 							? mb_substr($other_full_title, 0, 8, 'UTF-8') . '...'
 							: $other_full_title;
@@ -85,7 +85,7 @@ get_sidebar();
 						</div>
 						<div class="ai-card-content">
 							<h3 class="ai-card-name"><?php echo esc_html($other_short_title); ?></h3>
-							<p class="ai-card-desc"><?php echo esc_html(wp_trim_words(get_the_excerpt(), 15)); ?></p>
+							<p class="ai-card-desc"><?php echo esc_html(wp_trim_words(navai_decode_entities(get_the_excerpt()), 15)); ?></p>
 						</div>
 					</a>
 				<?php } ?>

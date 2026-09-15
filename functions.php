@@ -2014,8 +2014,8 @@ function navai_ajax_search() {
 			$query->the_post();
 			$results[] = array(
 				'id'      => get_the_ID(),
-				'title'   => get_the_title(),
-				'excerpt' => wp_trim_words(get_the_excerpt(), 20),
+				'title'   => navai_get_clean_title(get_the_ID()),
+				'excerpt' => wp_trim_words(navai_decode_entities(get_the_excerpt()), 20),
 				'url'     => get_permalink(),
 				'icon'    => get_the_post_thumbnail_url(get_the_ID(), 'thumbnail'),
 			);
@@ -2287,6 +2287,37 @@ function navai_ajax_fetch_site_info() {
 add_action('wp_ajax_navai_fetch_site_info', 'navai_ajax_fetch_site_info');
 
 /**
+ * 清理文本中的 HTML 数字/命名实体，防止卡片标题等处显示 &#8213; 之类的字面文本
+ * 例如：'Qoder&#8213;AI' -> 'Qoder—AI'，'AiPPT&#8594;' -> 'AiPPT→'
+ * 使用 ENT_QUOTES 保证引号类实体（&amp;quot;、&amp;#039;）也能正确还原
+ *
+ * @param string $text 原始文本
+ * @return string 解码后的文本
+ */
+function navai_decode_entities($text) {
+	if (is_array($text) || is_object($text)) {
+		return $text;
+	}
+	return html_entity_decode((string) $text, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * 获取经过实体解码的标题（用于卡片、列表等显示场景）
+ * @return string
+ */
+function navai_get_clean_title($post_id = 0) {
+	return navai_decode_entities(get_the_title($post_id));
+}
+
+/**
+ * 获取经过实体解码的摘要（用于卡片、列表等显示场景）
+ * @return string
+ */
+function navai_get_clean_excerpt($post_id = 0) {
+	return navai_decode_entities(get_the_excerpt($post_id));
+}
+
+/**
  * 重复网址检测 AJAX
  *
  * 扫描所有 ai_tool 文章，找出 _website_url 重复的记录
@@ -2349,7 +2380,7 @@ function navai_ajax_check_duplicates() {
 		$normalized_map[$key][] = array(
 			'id'           => $post_id,
 			'url'          => $url,
-			'title'        => get_the_title($post_id),
+			'title'        => navai_get_clean_title($post_id),
 			'icon_url'     => get_post_meta($post_id, '_site_icon_url', true),
 			'has_desc'     => $has_desc,
 			'has_icon'     => $has_icon,
@@ -6557,7 +6588,7 @@ function navai_site_review_page() {
 							<span class="dashicons dashicons-globe" style="font-size:28px;color:#ccc;"></span>
 						<?php endif; ?>
 					</td>
-					<td><strong><?php the_title(); ?></strong></td>
+					<td><strong><?php echo esc_html(navai_get_clean_title($post_id)); ?></strong></td>
 					<td><a href="<?php echo esc_url($website_url); ?>" target="_blank" rel="noopener"><?php echo esc_html($website_url); ?></a></td>
 					<td><?php echo esc_html($user_name); ?></td>
 					<td><?php echo $submit_time ? esc_html($submit_time) : get_the_date('Y-m-d H:i'); ?></td>
@@ -6752,8 +6783,8 @@ add_action('wp_head', function () {
     $json_ld = array(
         '@context' => 'https://schema.org',
         '@type'    => 'WebSite',
-        'name'     => get_the_title(),
-        'description' => wp_strip_all_tags($excerpt),
+        'name'     => navai_get_clean_title($post_id),
+        'description' => wp_strip_all_tags(navai_decode_entities($excerpt)),
         'url'      => $url ?: get_permalink(),
     );
 
@@ -6861,11 +6892,11 @@ function navai_generate_feed() {
     <lastBuildDate><?php echo mysql2date('D, d M Y H:i:s +0000', get_lastpostmodified('GMT'), false); ?></lastBuildDate>
     <?php if ($posts->have_posts()) : while ($posts->have_posts()) : $posts->the_post(); ?>
     <item>
-        <title><?php the_title_rss(); ?></title>
+        <title><?php echo esc_html(navai_decode_entities(get_the_title())); ?></title>
         <link><?php the_permalink_rss(); ?></link>
         <guid isPermaLink="true"><?php the_guid(); ?></guid>
         <pubDate><?php echo mysql2date('D, d M Y H:i:s +0000', get_post_time('Y-m-d H:i:s', true), false); ?></pubDate>
-        <description><![CDATA[<?php the_excerpt_rss(); ?>]]></description>
+        <description><![CDATA[<?php echo navai_decode_entities(get_the_excerpt()); ?>]]></description>
         <dc:creator><?php the_author_rss(); ?></dc:creator>
         <?php
         $cats = get_the_terms(get_the_ID(), 'ai_category');
@@ -7363,10 +7394,10 @@ function navai_bookmarks_page() {
                         <?php if ($icon) : ?>
                             <img src="<?php echo esc_url($icon); ?>" style="width:24px;height:24px;" onerror="this.style.display='none';">
                         <?php else : ?>
-                            <span style="display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;background:#eee;border-radius:4px;font-size:12px;"><?php echo esc_html(mb_substr(get_the_title(), 0, 1, 'UTF-8')); ?></span>
+                            <span style="display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;background:#eee;border-radius:4px;font-size:12px;"><?php echo esc_html(mb_substr(navai_get_clean_title($pid), 0, 1, 'UTF-8')); ?></span>
                         <?php endif; ?>
                     </td>
-                    <td><strong><?php the_title(); ?></strong></td>
+                    <td><strong><?php echo esc_html(navai_get_clean_title($pid)); ?></strong></td>
                     <td><a href="<?php echo esc_url($url ?: get_permalink()); ?>" target="_blank"><?php echo esc_url($url ?: get_permalink()); ?></a></td>
                     <td>
                         <button class="button button-small navai-remove-bookmark" data-post-id="<?php echo $pid; ?>"><?php esc_html_e('移除', 'navai'); ?></button>
@@ -7467,14 +7498,14 @@ add_shortcode('navai_my_bookmarks', function () {
         <div class="ai-card" data-post-id="<?php echo esc_attr($pid); ?>">
             <a href="<?php echo esc_url(get_permalink()); ?>" class="ai-card-icon">
                 <?php if ($icon) : ?>
-                    <img src="<?php echo esc_url($icon); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                    <span style="display:none;"><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+                    <img src="<?php echo esc_url($icon); ?>" alt="<?php echo esc_attr(navai_get_clean_title($pid)); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <span style="display:none;"><?php echo esc_html(mb_substr(navai_get_clean_title($pid), 0, 1, 'UTF-8')); ?></span>
                 <?php else : ?>
-                    <span><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+                    <span><?php echo esc_html(mb_substr(navai_get_clean_title($pid), 0, 1, 'UTF-8')); ?></span>
                 <?php endif; ?>
             </a>
-            <h3 class="ai-card-title"><a href="<?php echo esc_url(get_permalink()); ?>"><?php echo esc_html(get_the_title()); ?></a></h3>
-            <p class="ai-card-description"><?php echo esc_html(wp_trim_words(get_the_excerpt(), 15)); ?></p>
+            <h3 class="ai-card-title"><a href="<?php echo esc_url(get_permalink()); ?>"><?php echo esc_html(navai_get_clean_title($pid)); ?></a></h3>
+            <p class="ai-card-description"><?php echo esc_html(wp_trim_words(navai_decode_entities(get_the_excerpt()), 15)); ?></p>
             <div class="ai-card-meta">
                 <span class="meta-rating"><?php echo esc_html($avg > 0 ? '★ ' . $avg : ''); ?> <?php echo $bc > 0 ? '(' . esc_html($bc) . '收藏)' : ''; ?></span>
             </div>
@@ -7542,14 +7573,14 @@ add_shortcode('navai_my_ratings', function () {
         <div class="ai-card" data-post-id="<?php echo esc_attr($pid); ?>">
             <a href="<?php echo esc_url(get_permalink()); ?>" class="ai-card-icon">
                 <?php if ($icon) : ?>
-                    <img src="<?php echo esc_url($icon); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                    <span style="display:none;"><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+                    <img src="<?php echo esc_url($icon); ?>" alt="<?php echo esc_attr(navai_get_clean_title($pid)); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <span style="display:none;"><?php echo esc_html(mb_substr(navai_get_clean_title($pid), 0, 1, 'UTF-8')); ?></span>
                 <?php else : ?>
-                    <span><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+                    <span><?php echo esc_html(mb_substr(navai_get_clean_title($pid), 0, 1, 'UTF-8')); ?></span>
                 <?php endif; ?>
             </a>
-            <h3 class="ai-card-title"><a href="<?php echo esc_url(get_permalink()); ?>"><?php echo esc_html(get_the_title()); ?></a></h3>
-            <p class="ai-card-description"><?php echo esc_html(wp_trim_words(get_the_excerpt(), 15)); ?></p>
+            <h3 class="ai-card-title"><a href="<?php echo esc_url(get_permalink()); ?>"><?php echo esc_html(navai_get_clean_title($pid)); ?></a></h3>
+            <p class="ai-card-description"><?php echo esc_html(wp_trim_words(navai_decode_entities(get_the_excerpt()), 15)); ?></p>
             <div class="ai-card-meta">
                 <span class="meta-rating">
                     我的评分：
@@ -7799,14 +7830,14 @@ add_shortcode('navai_my_submitted', function () {
         <div class="ai-card" data-post-id="<?php echo esc_attr($pid); ?>">
             <a href="<?php echo esc_url(get_permalink()); ?>" class="ai-card-icon">
                 <?php if ($icon) : ?>
-                    <img src="<?php echo esc_url($icon); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                    <span style="display:none;"><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+                    <img src="<?php echo esc_url($icon); ?>" alt="<?php echo esc_attr(navai_get_clean_title($pid)); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <span style="display:none;"><?php echo esc_html(mb_substr(navai_get_clean_title($pid), 0, 1, 'UTF-8')); ?></span>
                 <?php else : ?>
-                    <span><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+                    <span><?php echo esc_html(mb_substr(navai_get_clean_title($pid), 0, 1, 'UTF-8')); ?></span>
                 <?php endif; ?>
             </a>
-            <h3 class="ai-card-title"><a href="<?php echo esc_url(get_permalink()); ?>"><?php echo esc_html(get_the_title()); ?></a></h3>
-            <p class="ai-card-description"><?php echo esc_html(wp_trim_words(get_the_excerpt(), 15)); ?></p>
+            <h3 class="ai-card-title"><a href="<?php echo esc_url(get_permalink()); ?>"><?php echo esc_html(navai_get_clean_title($pid)); ?></a></h3>
+            <p class="ai-card-description"><?php echo esc_html(wp_trim_words(navai_decode_entities(get_the_excerpt()), 15)); ?></p>
             <div class="ai-card-meta">
                 <span class="navai-status-badge navai-status-<?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></span>
             </div>

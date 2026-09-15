@@ -23,6 +23,7 @@ if (have_posts()) {
 }
 
 $post_id   = get_the_ID();
+$clean_title   = navai_get_clean_title($post_id);
 
 // 获取排行榜数量
 $ranking_count = get_option('navai_ranking_count', 10);
@@ -55,7 +56,7 @@ if (!$ranking_query->have_posts()) {
 	<!-- 顶部信息栏 -->
 	<div class="detail-header">
 		<div class="detail-header-main">
-			<h1 class="detail-title"><?php the_title(); ?></h1>
+			<h1 class="detail-title"><?php echo esc_html($clean_title); ?></h1>
 
 			<div class="detail-meta">
 				<span class="detail-meta-item">
@@ -64,7 +65,7 @@ if (!$ranking_query->have_posts()) {
 				</span>
 			</div>
 
-			<p class="detail-subtitle"><?php echo esc_html(wp_trim_words(get_the_excerpt(), 30)); ?></p>
+			<p class="detail-subtitle"><?php echo esc_html(wp_trim_words(navai_decode_entities(get_the_excerpt()), 30)); ?></p>
 
 			<div class="detail-info-table">
 				<div class="detail-info-row">
@@ -114,7 +115,8 @@ if (!$ranking_query->have_posts()) {
 							$rank_url    = get_post_meta($rank_id, '_website_url', true);
 							$rank_icon   = get_post_meta($rank_id, '_site_icon_url', true);
 							$rank_thumb  = get_the_post_thumbnail_url($rank_id, 'thumbnail');
-							$rank_desc   = wp_trim_words(get_the_excerpt(), 20);
+							$rank_clean_title = navai_get_clean_title($rank_id);
+							$rank_desc   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 20);
 						?>
 						<div class="detail-ranking-item" title="<?php echo esc_attr($rank_desc); ?>">
 							<span class="detail-ranking-num"><?php echo $rank; ?></span>
@@ -123,16 +125,16 @@ if (!$ranking_query->have_posts()) {
                                target="_blank"
                                rel="noopener noreferrer">
 								<?php if ($rank_icon) : ?>
-									<img src="<?php echo esc_url($rank_icon); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-									<span style="display:none;"><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+									<img src="<?php echo esc_url($rank_icon); ?>" alt="<?php echo esc_attr($rank_clean_title); ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+									<span style="display:none;"><?php echo esc_html(mb_substr($rank_clean_title, 0, 1)); ?></span>
 								<?php elseif ($rank_thumb) : ?>
-									<img src="<?php echo esc_url($rank_thumb); ?>" alt="<?php echo esc_attr(get_the_title()); ?>">
+									<img src="<?php echo esc_url($rank_thumb); ?>" alt="<?php echo esc_attr($rank_clean_title); ?>">
 								<?php else : ?>
-									<span><?php echo esc_html(mb_substr(get_the_title(), 0, 1)); ?></span>
+									<span><?php echo esc_html(mb_substr($rank_clean_title, 0, 1)); ?></span>
 								<?php endif; ?>
 							</a>
 							<a href="<?php echo esc_url(get_permalink()); ?>" class="detail-ranking-info">
-								<h4 class="detail-ranking-name"><?php the_title(); ?></h4>
+								<h4 class="detail-ranking-name"><?php echo esc_html($rank_clean_title); ?></h4>
 								<p class="detail-ranking-desc"><?php echo esc_html($rank_desc); ?></p>
 							</a>
 						</div>
