@@ -498,8 +498,8 @@ function navai_dynamic_grid_css() {
 	?>
 	<style>
 	@media screen and (min-width: 769px) {
-		.sites-grid { grid-template-columns: repeat(<?php echo $sites_per_row; ?>, 1fr) !important; }
-		.card-grid { grid-template-columns: repeat(<?php echo $sites_per_row; ?>, 1fr) !important; }
+		.sites-grid { grid-template-columns: repeat(<?php echo $sites_per_row; ?>, minmax(0, 1fr)) !important; }
+		.card-grid { grid-template-columns: repeat(<?php echo $sites_per_row; ?>, minmax(0, 1fr)) !important; }
 	}
 	</style>
 	<?php

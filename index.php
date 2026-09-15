@@ -238,7 +238,7 @@ get_sidebar();
 					<i data-lucide="star" style="width:20px;height:20px;color:#f59e0b;"></i>
 					<?php esc_html_e('热门推荐', 'navai'); ?>
 				</h2>
-				<div class="navai-recommend-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;">
+				<div class="navai-recommend-grid" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;min-width:0;">
 				<?php while ($rec_query->have_posts()) : $rec_query->the_post();
 					get_template_part('template-parts/content-ai-card', null, array('recommend' => true));
 				endwhile; wp_reset_postdata(); ?>

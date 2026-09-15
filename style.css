@@ -72,6 +72,7 @@ body {
     color: var(--gray-800);
     background-color: var(--white);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
 }
 
 a {
@@ -882,6 +883,11 @@ button {
 /* ========================================
    7. Main Content
    ======================================== */
+.main-content {
+    min-width: 0;
+    overflow-x: hidden;
+}
+
 .category-section {
     margin-bottom: 48px;
 }
@@ -982,15 +988,17 @@ button {
 /* Sites Grid - 左右结构布局 */
 .sites-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
+    min-width: 0;
 }
 
 /* Card Grid - 搜索/AJAX加载 */
 .card-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
+    min-width: 0;
 }
 
 .ai-card {
@@ -1003,6 +1011,8 @@ button {
     border-radius: 12px;
     transition: all 0.2s;
     text-decoration: none;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .ai-card:hover {
@@ -1516,8 +1526,9 @@ button {
 
 .detail-related-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
+    min-width: 0;
 }
 
 .detail-related-item {
@@ -2330,7 +2341,7 @@ button {
     }
 
     .detail-related-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -2664,7 +2675,7 @@ button {
     }
 
     .sites-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
 
@@ -2705,7 +2716,7 @@ button {
 
 @media (max-width: 480px) {
     .sites-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
 }
@@ -2889,14 +2900,15 @@ button {
 }
 .navai-recommend-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
+    min-width: 0;
 }
 @media (max-width: 1024px) {
-    .navai-recommend-grid { grid-template-columns: repeat(3, 1fr); }
+    .navai-recommend-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 768px) {
-    .navai-recommend-grid { grid-template-columns: repeat(2, 1fr); }
+    .navai-recommend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* 卡片评级和元数据 */
