@@ -255,13 +255,15 @@
                 });
             }
 
-            // 空分类隐藏分页，有卡片则显示
-            var $grid = $section.find('.sites-grid');
+            // 分页显示逻辑：分类页下，切换到子分类时检查该子分类卡片数是否超过75个（5列×15行），超过才显示分页
             var $pagination = $section.find('.pagination');
-            if ($grid.find('.ai-card:visible').length === 0) {
-                $pagination.hide();
-            } else {
-                $pagination.show();
+            if ($pagination.length && $section.hasClass('main-content')) {
+                var visibleCount = $section.find('.ai-card:visible').length;
+                if (visibleCount > 75) {
+                    $pagination.show();
+                } else {
+                    $pagination.hide();
+                }
             }
         });
     }
