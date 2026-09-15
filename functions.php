@@ -2003,6 +2003,59 @@ add_action('wp_ajax_nopriv_navai_increment_click', 'navai_ajax_increment_click')
  */
 
 /**
+ * 子分类卡片总数 AJAX
+ *
+ * 返回指定子分类（含其全部后代）下 ai_tool 的卡片总数，供前端判断该 Tab
+ * 是否需要分页（> 75）以及计算总页数。
+ *
+ * @return void
+ */
+function navai_ajax_subcategory_count() {
+	check_ajax_referer('navai_nonce', 'nonce');
+
+	$term_id   = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
+	$parent_id = isset($_POST['parent_id']) ? absint($_POST['parent_id']) : 0;
+
+	// term_id=0 表示父分类"全部"Tab，统计父分类及其后代
+	$target_term = $term_id > 0 ? $term_id : $parent_id;
+
+	$total = 0;
+	if ($target_term > 0) {
+		// 统计该分类 + 其全部后代下的文章数
+		$terms_to_query = array($target_term);
+		$descendants = get_terms(array(
+			'taxonomy'   => 'ai_category',
+			'parent'     => $target_term,
+			'hide_empty' => false,
+			'fields'     => 'ids',
+		));
+		if (!is_wp_error($descendants)) {
+			$terms_to_query = array_merge($terms_to_query, $descendants);
+		}
+
+		$count_query = new WP_Query(array(
+			'post_type'      => 'ai_tool',
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'paged'          => 1,
+			'tax_query'      => array(
+				array(
+					'taxonomy' => 'ai_category',
+					'field'    => 'term_id',
+					'terms'    => $terms_to_query,
+				),
+			),
+		));
+		$total = $count_query->found_posts;
+	}
+
+	wp_send_json_success(array('total' => (int) $total));
+}
+add_action('wp_ajax_navai_subcategory_count', 'navai_ajax_subcategory_count');
+add_action('wp_ajax_nopriv_navai_subcategory_count', 'navai_ajax_subcategory_count');
+
+/**
  * 搜索AI工具 AJAX
  *
  * @return void

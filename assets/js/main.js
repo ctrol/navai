@@ -255,15 +255,55 @@
                 });
             }
 
-            // 分页显示逻辑：分类页下，切换到子分类时检查该子分类卡片数是否超过75个（5列×15行），超过才显示分页
+            // 分页显示逻辑：分类页下，按该Tab自身的卡片总数AJAX统计，决定是否需要分页
             var $pagination = $section.find('.pagination');
             if ($pagination.length && $section.hasClass('main-content')) {
-                var visibleCount = $section.find('.ai-card:visible').length;
-                if (visibleCount > 75) {
+                updateTabPagination($section, catId, $pagination);
+            }
+        });
+    }
+
+    /**
+     * Tab切换时按该Tab自身卡片总数AJAX统计，决定分页显示/隐藏
+     *
+     * 每页固定75张（5列×15行），总数超过75才显示分页
+     *
+     * @param {jQuery} $section    页面容器
+     * @param {*}      catId       当前Tab的data-filter值（'all' 或 term_id）
+     * @param {jQuery} $pagination 分页容器
+     */
+    function updateTabPagination($section, catId, $pagination) {
+        var $tabs = $section.find('.subcategory-tabs');
+        var parentId = parseInt($tabs.attr('data-parent'), 10) || 0;
+
+        if (typeof navaiAjax === 'undefined' || !navaiAjax.ajaxurl) {
+            $pagination.hide();
+            return;
+        }
+
+        $pagination.html('<span style="padding:12px 16px;color:#999;font-size:14px;">加载中...</span>');
+
+        $.ajax({
+            url: navaiAjax.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'navai_subcategory_count',
+                nonce: navaiAjax.nonce,
+                term_id: catId === 'all' ? 0 : parseInt(catId, 10),
+                parent_id: parentId
+            },
+            timeout: 8000,
+            success: function(res) {
+                var total = (res && res.data && res.data.total) ? res.data.total : 0;
+                if (total > 75) {
                     $pagination.show();
+                    // 保留原始分页链接，仅更新显示
                 } else {
                     $pagination.hide();
                 }
+            },
+            error: function() {
+                $pagination.hide();
             }
         });
     }

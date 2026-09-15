@@ -39,7 +39,7 @@ get_sidebar();
 	?>
 
 	<!-- 子分类Tab（含一级分类名称） -->
-	<div class="subcategory-tabs">
+	<div class="subcategory-tabs" data-parent="<?php echo esc_attr($term ? $term->term_id : 0); ?>">
 		<button class="subcategory-tab tab-parent" data-filter="all">
 			<span class="section-icon">
 				<i data-lucide="<?php echo esc_attr($section_icon); ?>"></i>
