@@ -719,7 +719,7 @@ function navai_visits_orderby($query) {
 	add_action('pre_get_posts', 'navai_visits_orderby');
 
 /**
- * 分类归档页每页显示150张卡片（5列×15行）
+ * 分类归档页每页显示75张卡片（5列×15行）
  *
  * @param WP_Query $query 查询对象
  */
@@ -729,7 +729,7 @@ function navai_category_posts_per_page($query) {
 	}
 
 	if (is_tax('ai_category')) {
-		$query->set('posts_per_page', 150);
+		$query->set('posts_per_page', 75);
 	}
 }
 add_action('pre_get_posts', 'navai_category_posts_per_page');
