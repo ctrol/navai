@@ -254,6 +254,15 @@
                     }
                 });
             }
+
+            // 空分类隐藏分页，有卡片则显示
+            var $grid = $section.find('.sites-grid');
+            var $pagination = $section.find('.pagination');
+            if ($grid.find('.ai-card:visible').length === 0) {
+                $pagination.hide();
+            } else {
+                $pagination.show();
+            }
         });
     }
 
