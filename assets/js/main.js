@@ -229,7 +229,7 @@
         $tabs.on('click', function() {
             var $tab = $(this);
             var catId = $tab.data('filter');
-            
+
             // 查找包含该Tab的容器（首页用 .category-section，分类页用 .main-content）
             var $section = $tab.closest('.category-section');
             if (!$section.length) {
@@ -240,72 +240,174 @@
             $section.find('.subcategory-tab').removeClass('active');
             $tab.addClass('active');
 
-            // 过滤显示的网址
-            var $cards = $section.find('.ai-card');
+            // 切到"全部"Tab时，恢复原始卡片
             if (catId === 'all') {
-                $cards.show();
-            } else {
-                $cards.each(function() {
-                    var cardCats = $(this).data('terms');
-                    if (cardCats && cardCats.toString().split(',').includes(catId.toString())) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
+                var $originalGrid = $section.data('original-grid-html');
+                var $gridCurrent = $section.find('.sites-grid');
+                if ($originalGrid) {
+                    $gridCurrent.replaceWith($originalGrid);
+                    $section.removeData('original-grid-html');
+                } else {
+                    $section.find('.ai-card').show();
+                }
+                var $pAll = $section.find('.pagination');
+                if ($pAll.length && $section.hasClass('main-content')) {
+                    $pAll.show();
+                }
+                // 首页：恢复"查看全部"链接
+                $section.find('.more-sites').show();
+                return;
             }
 
-            // 分页显示逻辑：分类页下，按该Tab自身的卡片总数AJAX统计，决定是否需要分页
-            var $pagination = $section.find('.pagination');
-            if ($pagination.length && $section.hasClass('main-content')) {
-                updateTabPagination($section, catId, $pagination);
+            // 缓存原始网格（首次切换子分类时）
+            if (!$section.data('original-grid-html')) {
+                var $origGrid = $section.find('.sites-grid').clone();
+                $section.data('original-grid-html', $origGrid);
             }
+
+            // 首页：隐藏"查看全部"链接
+            if ($section.hasClass('category-section')) {
+                $section.find('.more-sites').hide();
+            }
+
+            // 切到子分类Tab时，AJAX拉取该子分类（含后代）的卡片替换网格
+            fetchSubcategoryCards($section, catId);
         });
-    }
 
-    /**
-     * Tab切换时按该Tab自身卡片总数AJAX统计，决定分页显示/隐藏
-     *
-     * 每页固定75张（5列×15行），总数超过75才显示分页
-     *
-     * @param {jQuery} $section    页面容器
-     * @param {*}      catId       当前Tab的data-filter值（'all' 或 term_id）
-     * @param {jQuery} $pagination 分页容器
-     */
-    function updateTabPagination($section, catId, $pagination) {
-        var $tabs = $section.find('.subcategory-tabs');
-        var parentId = parseInt($tabs.attr('data-parent'), 10) || 0;
+        /**
+         * AJAX拉取子分类（含后代）卡片并替换网格
+         */
+        function fetchSubcategoryCards($section, catId) {
+            var $tabs = $section.find('.subcategory-tabs');
+            var parentId = parseInt($tabs.attr('data-parent'), 10) || 0;
+            var $grid = $section.find('.sites-grid');
+            var $pagination = $section.find('.pagination');
 
-        if (typeof navaiAjax === 'undefined' || !navaiAjax.ajaxurl) {
+            if (typeof navaiAjax === 'undefined' || !navaiAjax.ajaxurl) return;
+
+            // 显示加载状态
+            var $loading = $('<div class="subcategory-loading" style="padding:40px 0;text-align:center;color:#999;font-size:14px;">加载中...</div>');
+            $grid.hide();
             $pagination.hide();
-            return;
+            $loading.insertBefore($grid);
+
+            // 每页数量：分类页75个，首页20个
+            var isHome = $section.hasClass('category-section');
+            var perPage = isHome ? 20 : 75;
+
+            $.ajax({
+                url: navaiAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'navai_subcategory_cards',
+                    nonce: navaiAjax.nonce,
+                    term_id: parseInt(catId, 10),
+                    parent_id: parentId,
+                    page: 1,
+                    per_page: perPage
+                },
+                timeout: 12000,
+                success: function(res) {
+                    $loading.remove();
+                    if (!res || !res.success || !res.data) return;
+
+                    var data = res.data;
+                    var cards = data.cards || [];
+
+                    // 构建HTML
+                    var $newGrid = $('<div class="sites-grid"></div>');
+                    if (cards.length === 0) {
+                        $newGrid.html('<div class="no-results" style="grid-column:1/-1;text-align:center;padding:40px 0;"><i data-lucide="inbox"></i><p style="color:#999;margin-top:8px;">该子分类下暂无AI工具</p></div>');
+                    } else {
+                        cards.forEach(function(c) {
+                            var title = c.title || '';
+                            var shortTitle = title.length > 8 ? title.substring(0, 8) + '...' : title;
+                            var iconColor = c.icon_color || 1;
+                            var firstChar = title.substring(0, 1);
+                            var websiteUrl = c.website_url || c.permalink;
+                            var iconInner = '';
+                            if (c.site_icon) {
+                                iconInner = '<img src="' + c.site_icon + '" alt="' + title + '" data-icon-color="' + iconColor + '" onerror="var p=this.parentElement;p.classList.add(\'color-' + iconColor + '\');this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">'
+                                           + '<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;">' + firstChar + '</span>';
+                            } else if (c.thumbnail) {
+                                iconInner = '<img src="' + c.thumbnail + '" alt="' + title + '" data-icon-color="' + iconColor + '" onerror="var p=this.parentElement;p.classList.add(\'color-' + iconColor + '\');this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">'
+                                           + '<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;">' + firstChar + '</span>';
+                            } else {
+                                iconInner = firstChar;
+                            }
+                            var iconColorCls = (!c.site_icon && !c.thumbnail) ? ' color-' + iconColor : '';
+                            var cardHtml = '<div class="ai-card" data-terms="' + (c.term_ids || '') + '">'
+                                + '<a href="' + websiteUrl + '" class="ai-card-left" target="_blank" rel="noopener noreferrer" title="' + title + '">'
+                                + '<div class="ai-card-icon' + iconColorCls + '">' + iconInner + '</div>'
+                                + '</a>'
+                                + '<a href="' + c.permalink + '" class="ai-card-right" rel="noopener noreferrer" title="' + title + '">'
+                                + '<h3 class="ai-card-name">' + shortTitle + '</h3>'
+                                + '<p class="ai-card-desc">' + (c.excerpt || '') + '</p>'
+                                + '</a>'
+                                + '</div>';
+                            $newGrid.append(cardHtml);
+                        });
+                    }
+
+                    // 替换网格
+                    $grid.replaceWith($newGrid);
+
+                    // 处理分页
+                    if ($section.hasClass('main-content')) {
+                        if (data.total_pages > 1) {
+                            $pagination.show();
+                            // 更新分页链接：构建基于该子分类的分页
+                            buildSubcategoryPagination($section, catId, data.total_pages, parentId);
+                        } else {
+                            $pagination.hide();
+                        }
+                    }
+
+                    // 重新初始化Lucide图标
+                    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                        lucide.createIcons();
+                    }
+                },
+                error: function() {
+                    $loading.html('<div class="no-results" style="text-align:center;padding:40px 0;"><i data-lucide="alert-circle"></i><p style="color:#999;margin-top:8px;">加载失败，请重试</p></div>');
+                    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                        lucide.createIcons();
+                    }
+                }
+            });
         }
 
-        $pagination.html('<span style="padding:12px 16px;color:#999;font-size:14px;">加载中...</span>');
+        /**
+         * 构建子分类分页链接
+         *
+         * 使用当前分类URL + /page/N/ 格式，点击后会刷新到对应页码，
+         * 服务端根据URL中的子分类参数（subcat）加载对应数据。
+         */
+        function buildSubcategoryPagination($section, catId, totalPages, parentId) {
+            var $pagination = $section.find('.pagination');
+            var base = window.location.origin + window.location.pathname;
+            // 规范化：去掉末尾的 /page/N/
+            base = base.replace(/\/page\/\d+\/?$/, '');
+            if (base.charAt(base.length - 1) !== '/') base += '/';
 
-        $.ajax({
-            url: navaiAjax.ajaxurl,
-            type: 'POST',
-            data: {
-                action: 'navai_subcategory_count',
-                nonce: navaiAjax.nonce,
-                term_id: catId === 'all' ? 0 : parseInt(catId, 10),
-                parent_id: parentId
-            },
-            timeout: 8000,
-            success: function(res) {
-                var total = (res && res.data && res.data.total) ? res.data.total : 0;
-                if (total > 75) {
-                    $pagination.show();
-                    // 保留原始分页链接，仅更新显示
-                } else {
-                    $pagination.hide();
+            var html = '';
+            if (totalPages > 1) {
+                for (var i = 1; i <= totalPages; i++) {
+                    var link;
+                    if (i === 1) {
+                        link = base + '?subcat=' + catId;
+                    } else {
+                        link = base + 'page/' + i + '/?subcat=' + catId;
+                    }
+                    html += '<a class="page-link" href="' + link + '">' + i + '</a>';
                 }
-            },
-            error: function() {
-                $pagination.hide();
+                html += '<a class="page-link next" href="' + base + 'page/2/?subcat=' + catId + '"><i data-lucide="chevron-right"></i></a>';
             }
-        });
+            $pagination.html(html);
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }
     }
 
     /**

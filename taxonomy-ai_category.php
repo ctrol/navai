@@ -31,6 +31,10 @@ get_sidebar();
 	));
 	$has_children = !empty($child_categories) && !is_wp_error($child_categories);
 
+	// 当前激活的子分类（来自URL参数 subcat）
+	$active_subcat = isset($_GET['subcat']) ? absint($_GET['subcat']) : 0;
+	$is_subcat_page = $active_subcat > 0;
+
 	// 获取分类图标
 	$section_icon = 'folder-open';
 	if (function_exists('navai_get_section_icon')) {
@@ -40,7 +44,7 @@ get_sidebar();
 
 	<!-- 子分类Tab（含一级分类名称） -->
 	<div class="subcategory-tabs" data-parent="<?php echo esc_attr($term ? $term->term_id : 0); ?>">
-		<button class="subcategory-tab tab-parent" data-filter="all">
+		<button class="subcategory-tab tab-parent<?php if (!$is_subcat_page) : ?> active<?php endif; ?>" data-filter="all">
 			<span class="section-icon">
 				<i data-lucide="<?php echo esc_attr($section_icon); ?>"></i>
 			</span>
@@ -48,7 +52,7 @@ get_sidebar();
 		</button>
 		<?php if ($has_children) : ?>
 		<?php $first_child = true; foreach ($child_categories as $child) : ?>
-		<button class="subcategory-tab<?php if ($first_child) : ?> active<?php $first_child = false; endif; ?>" data-filter="<?php echo esc_attr($child->term_id); ?>">
+		<button class="subcategory-tab<?php if ($active_subcat === (int) $child->term_id) : ?> active<?php elseif ($first_child && !$is_subcat_page) : ?> active<?php $first_child = false; endif; ?>" data-filter="<?php echo esc_attr($child->term_id); ?>">
 			<?php echo esc_html($child->name); ?>
 		</button>
 		<?php endforeach; ?>
@@ -72,13 +76,21 @@ get_sidebar();
 			$thumbnail = get_the_post_thumbnail_url($post_id, 'thumbnail');
 			$excerpt   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 12);
 
-			// 获取该文章所属的分类ID
+			// 获取该文章所属的分类ID（含祖先链，供Tab过滤用）
 			$post_terms = get_the_terms($post_id, 'ai_category');
 			$term_ids = array();
 			if ( ! empty($post_terms) && !is_wp_error($post_terms)) {
 				foreach ($post_terms as $t) {
 					$term_ids[] = $t->term_id;
+					// 加入祖先链
+					$ancestor = $t->parent;
+					while ($ancestor > 0) {
+						$term_ids[] = $ancestor;
+						$ancestor_term = get_term($ancestor, 'ai_category');
+						$ancestor = $ancestor_term && !is_wp_error($ancestor_term) ? (int) $ancestor_term->parent : 0;
+					}
 				}
+				$term_ids = array_unique($term_ids);
 			}
 			?>
 

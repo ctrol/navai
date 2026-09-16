@@ -357,7 +357,7 @@ get_sidebar();
 	<!-- 分类区块 -->
 	<section class="category-section" id="cat-<?php echo esc_attr($parent_cat->slug); ?>">
 		<!-- 子分类Tab（含一级分类名称） -->
-		<div class="subcategory-tabs">
+		<div class="subcategory-tabs" data-parent="<?php echo esc_attr($parent_cat->term_id); ?>">
 			<button class="subcategory-tab tab-parent" data-filter="all">
 				<span class="section-icon">
 					<i data-lucide="<?php echo esc_attr(navai_get_section_icon($parent_cat->name)); ?>"></i>
@@ -389,14 +389,22 @@ get_sidebar();
 					$icon_color = wp_rand(1, 8);
 				}
 				
-				// 获取该文章所属的分类ID
-				$post_terms = get_the_terms($post_id, 'ai_category');
-				$term_ids = array();
-				if ( ! empty($post_terms) && !is_wp_error($post_terms)) {
-					foreach ($post_terms as $t) {
-						$term_ids[] = $t->term_id;
+				// 获取该文章所属的分类ID（含祖先链，供Tab过滤用）
+			$post_terms = get_the_terms($post_id, 'ai_category');
+			$term_ids = array();
+			if ( ! empty($post_terms) && !is_wp_error($post_terms)) {
+				foreach ($post_terms as $t) {
+					$term_ids[] = $t->term_id;
+					// 加入祖先链
+					$ancestor = $t->parent;
+					while ($ancestor > 0) {
+						$term_ids[] = $ancestor;
+						$ancestor_term = get_term($ancestor, 'ai_category');
+						$ancestor = $ancestor_term && !is_wp_error($ancestor_term) ? (int) $ancestor_term->parent : 0;
 					}
 				}
+				$term_ids = array_unique($term_ids);
+			}
 			?>
 			<?php
 			// 内联 AI 卡片模板（原 template-parts/content-ai-card.php）
