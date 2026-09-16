@@ -970,12 +970,7 @@ button {
 }
 
 a.subcategory-tab {
-    color: var(--gray-600);
     text-decoration: none;
-}
-
-a.subcategory-tab:hover {
-    color: var(--gray-600);
 }
 
 .subcategory-tab:hover {

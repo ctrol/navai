@@ -150,15 +150,18 @@ get_sidebar();
 	</div>
 
 	<!-- 分页 -->
+	<?php
+	$pagination = paginate_links(array(
+		'prev_text' => '<i data-lucide="chevron-left"></i>',
+		'next_text' => '<i data-lucide="chevron-right"></i>',
+		'add_args'   => $is_subcat_page ? array('subcat' => $active_subcat) : array(),
+	));
+	if ($pagination) :
+	?>
 	<nav class="pagination" aria-label="<?php esc_attr_e('分页导航', 'navai'); ?>">
-		<?php
-		echo paginate_links(array(
-			'prev_text' => '<i data-lucide="chevron-left"></i>',
-			'next_text' => '<i data-lucide="chevron-right"></i>',
-			'add_args'   => $is_subcat_page ? array('subcat' => $active_subcat) : array(),
-		));
-		?>
+		<?php echo $pagination; ?>
 	</nav>
+	<?php endif; ?>
 
 	<?php else : ?>
 	<div class="no-results">
