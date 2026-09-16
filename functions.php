@@ -733,18 +733,14 @@ function navai_category_posts_per_page($query) {
 	if (is_tax('ai_category')) {
 		$query->set('posts_per_page', 75);
 
-		// subcat 参数：按子分类（含后代）过滤
+		// subcat 参数：按子分类（含全部后代）过滤
 		$subcat_id = isset($_GET['subcat']) ? absint($_GET['subcat']) : 0;
 		if ($subcat_id > 0) {
+			// 获取该子分类的全部后代（递归）
 			$terms_to_query = array($subcat_id);
-			$descendants = get_terms(array(
-				'taxonomy'   => 'ai_category',
-				'parent'     => $subcat_id,
-				'hide_empty' => false,
-				'fields'     => 'ids',
-			));
-			if (!is_wp_error($descendants) && !empty($descendants)) {
-				$terms_to_query = array_merge($terms_to_query, $descendants);
+			$all_descendants = get_term_children($subcat_id, 'ai_category');
+			if (!is_wp_error($all_descendants) && !empty($all_descendants)) {
+				$terms_to_query = array_merge($terms_to_query, $all_descendants);
 			}
 
 			$tax_query = array(
@@ -2027,96 +2023,6 @@ add_action('wp_ajax_nopriv_navai_increment_click', 'navai_ajax_increment_click')
  * 9. AJAX处理
  * ============================================================================
  */
-
-/**
- * 子分类卡片查询 AJAX
- *
- * 返回指定子分类（含其全部后代）下 ai_tool 的第一页卡片数据，供 Tab 切换时
- * AJAX 替换网格内容。
- *
- * @return void
- */
-function navai_ajax_subcategory_cards() {
-	check_ajax_referer('navai_nonce', 'nonce');
-
-	$term_id   = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
-	$parent_id = isset($_POST['parent_id']) ? absint($_POST['parent_id']) : 0;
-	$page      = isset($_POST['page']) ? max(1, absint($_POST['page'])) : 1;
-	$per_page  = isset($_POST['per_page']) ? max(1, absint($_POST['per_page'])) : 75;
-
-	// term_id=0 表示父分类"全部"Tab
-	$target_term = $term_id > 0 ? $term_id : $parent_id;
-
-	// 目标分类 + 全部后代
-	$terms_to_query = array($target_term);
-	$descendants = get_terms(array(
-		'taxonomy'   => 'ai_category',
-		'parent'     => $target_term,
-		'hide_empty' => false,
-		'fields'     => 'ids',
-	));
-	if (!is_wp_error($descendants)) {
-		$terms_to_query = array_merge($terms_to_query, $descendants);
-	}
-
-	$query = new WP_Query(array(
-		'post_type'      => 'ai_tool',
-		'post_status'    => 'publish',
-		'posts_per_page' => $per_page,
-		'paged'          => $page,
-		'orderby'        => 'date',
-		'order'          => 'DESC',
-		'tax_query'      => array(
-			array(
-				'taxonomy' => 'ai_category',
-				'field'    => 'term_id',
-				'terms'    => $terms_to_query,
-			),
-		),
-	));
-
-	$cards = array();
-	if ($query->have_posts()) {
-		while ($query->have_posts()) {
-			$query->the_post();
-			$pid = get_the_ID();
-			$card_terms = get_the_terms($pid, 'ai_category');
-			$term_ids = array();
-			if (!empty($card_terms) && !is_wp_error($card_terms)) {
-				foreach ($card_terms as $t) {
-					$term_ids[] = $t->term_id;
-				}
-				$term_ids = array_unique($term_ids);
-			}
-			$title = navai_get_clean_title($pid);
-		$icon_color = get_post_meta($pid, '_icon_color', true);
-		if (empty($icon_color)) {
-			$icon_color = wp_rand(1, 8);
-		}
-		$cards[] = array(
-			'id'            => $pid,
-			'title'         => $title,
-			'excerpt'       => wp_trim_words(navai_decode_entities(get_the_excerpt()), 12),
-			'website_url'   => get_post_meta($pid, '_website_url', true),
-			'site_icon'     => get_post_meta($pid, '_site_icon_url', true),
-			'icon_color'    => $icon_color,
-			'thumbnail'     => get_the_post_thumbnail_url($pid, 'thumbnail'),
-				'permalink'     => get_permalink($pid),
-				'term_ids'      => implode(',', $term_ids),
-			);
-		}
-		wp_reset_postdata();
-	}
-
-	wp_send_json_success(array(
-		'cards'       => $cards,
-		'total'       => (int) $query->found_posts,
-		'total_pages' => (int) $query->max_num_pages,
-		'page'        => $page,
-	));
-}
-add_action('wp_ajax_navai_subcategory_cards', 'navai_ajax_subcategory_cards');
-add_action('wp_ajax_nopriv_navai_subcategory_cards', 'navai_ajax_subcategory_cards');
 
 /**
  * 搜索AI工具 AJAX

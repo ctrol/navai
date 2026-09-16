@@ -40,21 +40,27 @@ get_sidebar();
 	if (function_exists('navai_get_section_icon')) {
 		$section_icon = navai_get_section_icon($category_name);
 	}
+
+	// 当前分类URL（用于构建Tab链接）
+	$category_url = $term ? get_term_link($term) : home_url('/');
+	if (is_wp_error($category_url)) {
+		$category_url = home_url('/');
+	}
 	?>
 
 	<!-- 子分类Tab（含一级分类名称） -->
 	<div class="subcategory-tabs" data-parent="<?php echo esc_attr($term ? $term->term_id : 0); ?>">
-		<button class="subcategory-tab tab-parent<?php if (!$is_subcat_page) : ?> active<?php endif; ?>" data-filter="all">
+		<a href="<?php echo esc_url($category_url); ?>" class="subcategory-tab tab-parent<?php if (!$is_subcat_page) : ?> active<?php endif; ?>" data-filter="all">
 			<span class="section-icon">
 				<i data-lucide="<?php echo esc_attr($section_icon); ?>"></i>
 			</span>
 			<?php echo esc_html($category_name); ?>
-		</button>
+		</a>
 		<?php if ($has_children) : ?>
-		<?php $first_child = true; foreach ($child_categories as $child) : ?>
-		<button class="subcategory-tab<?php if ($active_subcat === (int) $child->term_id) : ?> active<?php elseif ($first_child && !$is_subcat_page) : ?> active<?php $first_child = false; endif; ?>" data-filter="<?php echo esc_attr($child->term_id); ?>">
+		<?php foreach ($child_categories as $child) : ?>
+		<a href="<?php echo esc_url(add_query_arg('subcat', $child->term_id, $category_url)); ?>" class="subcategory-tab<?php if ($active_subcat === (int) $child->term_id) : ?> active<?php endif; ?>" data-filter="<?php echo esc_attr($child->term_id); ?>">
 			<?php echo esc_html($child->name); ?>
-		</button>
+		</a>
 		<?php endforeach; ?>
 		<?php endif; ?>
 	</div>
@@ -76,7 +82,7 @@ get_sidebar();
 			$thumbnail = get_the_post_thumbnail_url($post_id, 'thumbnail');
 			$excerpt   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 12);
 
-			// 获取该文章所属的分类ID（含祖先链，供Tab过滤用）
+			// 获取该文章所属的分类ID（含祖先链）
 			$post_terms = get_the_terms($post_id, 'ai_category');
 			$term_ids = array();
 			if ( ! empty($post_terms) && !is_wp_error($post_terms)) {
@@ -149,6 +155,7 @@ get_sidebar();
 		echo paginate_links(array(
 			'prev_text' => '<i data-lucide="chevron-left"></i>',
 			'next_text' => '<i data-lucide="chevron-right"></i>',
+			'add_args'   => $is_subcat_page ? array('subcat' => $active_subcat) : array(),
 		));
 		?>
 	</nav>
