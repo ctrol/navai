@@ -3,7 +3,7 @@
  *
  * @package NavAi
  * @author 老九
- * @version 1.29.10
+ * @version 1.1.1
  */
 
 (function($) {
@@ -16,7 +16,6 @@
         initMobileMenu();
         initMobileSearch();
         initSearchTabs();
-        initSubcategoryTabs();
         initBackToTop();
         initSidebarCollapse();
         initSidebarSubmenu();
@@ -27,6 +26,7 @@
         initScrollSpy();
         initFloatingMenu();
         initClickTracking();
+        initCategoryTabAjax();
     });
 
     /**
@@ -217,45 +217,370 @@
     }
 
     /**
-     * 二级分类Tab切换初始化
+     * 分类 Tab 快速切换初始化（服务端首屏 + 本地缓存 + 悬停预取 + AJAX 兜底）
      *
-     * @return void
+     * 支持两种页面场景：
+     * - 首页：多个 .category-section，每个区块有独立的 subcategory-tabs + sites-grid
+     *   点击 Tab 在区块内切换卡片，不跳转整页
+     * - 分类页：#navai-cards-container 单容器，点击 Tab + 分页链接均走 AJAX
+     *
+     * 性能策略（三层）：
+     *   1. 本地 localCache：点击过的 Tab 结果缓存在内存，再次点击零请求
+     *   2. 悬停预取：鼠标 hover 到某 Tab 上时，若该 Tab 未缓存则静默 fetch() 预取
+     *      （用户通常 hover 100-300ms 后点击，预取大概率已完成 → 点击即命中）
+     *   3. AJAX 兜底：未命中且未预取时发 $.post 请求
+     *
+     * 统一使用 document 委托拦截，保证首页和分类页 Tab 点击都不会发生整页跳转。
      */
-    function initSubcategoryTabs() {
-        var $tabs = $('.subcategory-tab');
+    function initCategoryTabAjax() {
+        // navaiAjax 未注入（脚本加载失败）时不拦截，保持默认链接行为
+        if (typeof navaiAjax === 'undefined') return;
 
-        if (!$tabs.length) return;
+        var localCache = {}; // 运行时缓存：key = "parentTermId_subcat_paged_perPage"
 
-        $tabs.on('click', function() {
-            var $tab = $(this);
-            var catId = $tab.data('filter');
+        // ========== 内嵌数据：index.php 在每个 .category-section 末尾写了
+        //          <script type="application/json" class="navai-tab-data" data-parent="X">
+        //          包含 all + 各子分类的前 20 条 cards_html。点击 Tab 时直接读取，
+        //          零网络、零等待。启动时解析进 localCache。 ==========
+        $('.navai-tab-data').each(function() {
+            var $el     = $(this);
+            var parent  = $el.attr('data-parent');
+            var data;
+            try {
+                data = JSON.parse($el.html());
+            } catch (err) { return; }
+            if (!data) return;
 
-            // 查找包含该Tab的容器（首页用 .category-section）
-            var $section = $tab.closest('.category-section');
-            if (!$section.length) return; // 分类页Tab是链接，不需要JS处理
-
-            // 切换Tab激活状态
-            $section.find('.subcategory-tab').removeClass('active');
-            $tab.addClass('active');
-
-            // 过滤显示的网址
-            var $cards = $section.find('.ai-card');
-            if (catId === 'all') {
-                $cards.show();
-            } else {
-                var catIdStr = catId.toString();
-                $cards.each(function() {
-                    var cardCats = $(this).data('terms');
-                    if (!cardCats) {
-                        $(this).hide();
-                        return;
-                    }
-                    var catList = String(cardCats).split(',');
-                    // 匹配：文章直接挂在当前子分类下，或挂在当前子分类的祖先分类下
-                    $(this)[catList.includes(catIdStr) ? 'show' : 'hide']();
+            // all（subcat=0）
+            if (data.all && parent) {
+                localCache[parent + '_0_1_20'] = {
+                    no_results:  !!data.all.no_results,
+                    cards_html:  data.all.cards_html || '',
+                    total_pages: data.all.total_pages || 1,
+                    pagination:  ''
+                };
+            }
+            // 各子分类
+            if (data.subcat && parent) {
+                Object.keys(data.subcat).forEach(function(cid) {
+                    localCache[parent + '_' + cid + '_1_20'] = {
+                        no_results:  !!data.subcat[cid].no_results,
+                        cards_html:  data.subcat[cid].cards_html || '',
+                        total_pages: data.subcat[cid].total_pages || 1,
+                        pagination:  ''
+                    };
                 });
             }
         });
+
+        // ========== 通用 AJAX 加载函数 ==========
+        function ajaxLoadCards(parentTermId, subcat, paged, perPage, successCallback, failCallback) {
+            var key = parentTermId + '_' + subcat + '_' + paged + '_' + perPage;
+            if (localCache[key]) {
+                successCallback(localCache[key]);
+                return;
+            }
+            $.post(navaiAjax.ajaxurl, {
+                action:         'navai_load_category_cards',
+                nonce:          navaiAjax.nonce,
+                parent_term_id: parentTermId,
+                subcat:         subcat,
+                paged:          paged,
+                per_page:       perPage
+            }).done(function(res) {
+                if (res.success && res.data) {
+                    localCache[key] = res.data;
+                    successCallback(res.data);
+                } else if (failCallback) {
+                    failCallback();
+                }
+            }).fail(function() {
+                if (failCallback) failCallback();
+            });
+        }
+
+        // ========== 悬停预取：鼠标移到 Tab 上时，静默 fetch 该 Tab 数据到 localCache ==========
+        // 使用 fetch() 原生 API（体积小、不阻塞 jQuery 队列），结果只写入 localCache。
+        // 用户通常 hover 100~300ms 后点击，此时预取大概率已完成 → 点击即命中缓存。
+        $(document).on('mouseenter', '.subcategory-tabs .subcategory-tab', function() {
+            var $tab  = $(this);
+            var $tabs = $tab.closest('.subcategory-tabs');
+
+            // 分类页 Tab
+            if ($cardsContainer && $cardsContainer.length && $tab.closest('#navai-cards-container, .main-content').length) {
+                var catTabs = $cardsContainer.closest('.main-content').find('.subcategory-tabs').first();
+                var pid = parseInt(catTabs.attr('data-parent'), 10) || 0;
+                var rawF = String($tab.attr('data-filter') || '');
+                var s = (rawF === 'all' || rawF === '') ? 0 : parseInt(rawF, 10) || 0;
+                prefetchCards(pid, s, 1, catPerPage);
+                return;
+            }
+
+            // 首页 Tab
+            var parentTermId = parseInt($tabs.attr('data-parent'), 10) || 0;
+            var rawFilter = String($tab.attr('data-filter') || '');
+            var subcat = (rawFilter === 'all' || rawFilter === '') ? 0 : parseInt(rawFilter, 10) || 0;
+            prefetchCards(parentTermId, subcat, 1, 20);
+        });
+
+        function prefetchCards(parentTermId, subcat, paged, perPage) {
+            var key = parentTermId + '_' + subcat + '_' + paged + '_' + perPage;
+            if (localCache[key]) return; // 已缓存，跳过
+
+            // 避免重复预取
+            var pendingKey = '__pending_' + key;
+            if (localCache[pendingKey]) return;
+            localCache[pendingKey] = true;
+
+            var formData = new FormData();
+            formData.append('action', 'navai_load_category_cards');
+            formData.append('nonce', navaiAjax.nonce);
+            formData.append('parent_term_id', String(parentTermId));
+            formData.append('subcat', String(subcat));
+            formData.append('paged', String(paged));
+            formData.append('per_page', String(perPage));
+
+            fetch(navaiAjax.ajaxurl, {
+                method:  'POST',
+                credentials: 'same-origin',
+                body:    formData
+            }).then(function(r) { return r.json(); }).then(function(res) {
+                delete localCache[pendingKey];
+                if (res && res.success && res.data) {
+                    localCache[key] = res.data;
+                }
+            }).catch(function() {
+                delete localCache[pendingKey];
+            });
+        }
+
+        // ========== 首页区块：更新 Tab 激活态 + 渲染 cards_html ==========
+        function renderHomeSection($section, data, currentSubcat) {
+            var $tabs  = $section.find('.subcategory-tabs');
+            var $grid  = $section.find('.sites-grid');
+            var $noSites = $section.find('.no-sites');
+
+            // 更新 Tab 激活态
+            $tabs.find('.subcategory-tab').removeClass('active');
+            if (currentSubcat > 0) {
+                $tabs.find('.subcategory-tab[data-filter="' + currentSubcat + '"]').addClass('active');
+            } else {
+                $tabs.find('.tab-parent').addClass('active');
+            }
+
+            if (!data.no_results && data.cards_html) {
+                if (!$grid.length) {
+                    $grid = $('<div class="sites-grid"></div>');
+                    ($noSites.length ? $noSites : $tabs).after($grid);
+                }
+                $grid.html(data.cards_html);
+                $noSites.remove();
+            } else {
+                $grid.remove();
+                if (!$noSites.length) {
+                    $noSites = $('<div class="no-sites"><p>' +
+                        (navaiAjax.str_no_results || '该分类下暂无AI工具') +
+                        '</p></div>');
+                    $tabs.after($noSites);
+                } else {
+                    $noSites.find('p').text(navaiAjax.str_no_results || '该分类下暂无AI工具');
+                }
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // ========== 分类页：更新 URL + Tab 激活态 + 渲染 ==========
+        var catParentTermId = 0;
+        var currentSubcat   = 0;
+        var currentPaged    = 1;
+        var catPerPage      = 75;
+        var isLoading       = false;
+        var $cardsContainer = null;
+
+        function initCategoryPage() {
+            var $cc = $('#navai-cards-container');
+            if (!$cc.length) return;
+            $cardsContainer = $cc;
+            var $tabsContainer = $cc.closest('.main-content').find('.subcategory-tabs').first();
+            if (!$tabsContainer.length) return;
+
+            catParentTermId = parseInt($tabsContainer.attr('data-parent'), 10) || 0;
+            currentSubcat   = parseInt($tabsContainer.attr('data-current-subcat'), 10) || 0;
+            currentPaged    = parseInt($('body').data('navai-current-paged'), 10) || 1;
+
+            // 预占首屏缓存位（subcat=0, paged=1 等价于首屏服务端渲染内容）
+            var key = catParentTermId + '_' + currentSubcat + '_1_' + catPerPage;
+            if (!localCache[key]) {
+                localCache[key] = {
+                    no_results:  $cc.find('.no-results').length > 0,
+                    cards_html:  $cc.find('.sites-grid').html() || '',
+                    total_pages: 1,
+                    pagination:  $cc.find('.pagination').length ? '<nav class="pagination" aria-label="分页导航">' + $cc.find('.pagination').html() + '</nav>' : ''
+                };
+            }
+        }
+
+        function updateUrl(subcat, paged) {
+            var url = window.location.href;
+            url = url.replace(/[?&](subcat|paged)=[^&]*/g, '');
+            var params = [];
+            if (subcat > 0) params.push('subcat=' + subcat);
+            if (paged  > 1) params.push('paged='  + paged);
+            if (params.length) {
+                url += (url.indexOf('?') !== -1 ? '&' : '?') + params.join('&');
+            }
+            window.history.replaceState(null, '', url);
+        }
+
+        function setCardsHtml(response) {
+            if (!response.no_results && response.cards_html) {
+                var html = '<div class="sites-grid">' + response.cards_html + '</div>';
+                if (response.total_pages > 1 && response.pagination) {
+                    html += '<nav class="pagination" aria-label="分页导航">' + response.pagination + '</nav>';
+                }
+                $cardsContainer.html(html);
+            } else {
+                $cardsContainer.html(
+                    '<div class="no-results"><i data-lucide="inbox"></i><p>' +
+                    (navaiAjax.str_no_results || '该分类下暂无AI工具') +
+                    '</p></div>'
+                );
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function getPaginationTarget($link) {
+            var href = $link.attr('href') || '';
+            var m = href.match(/[?&]paged=(\d+)/);
+            if (m) return parseInt(m[1], 10);
+            if ($link.hasClass('prev')) return Math.max(1, currentPaged - 1);
+            if ($link.hasClass('next')) return currentPaged + 1;
+            return 0;
+        }
+
+        function loadSubcat(subcat, paged) {
+            if (isLoading || !$cardsContainer) return;
+            var key = catParentTermId + '_' + subcat + '_' + paged + '_' + catPerPage;
+
+            if (localCache[key]) {
+                setCardsHtml(localCache[key]);
+                currentSubcat = subcat;
+                currentPaged  = paged;
+                $('body').data('navai-current-paged', paged);
+                updateUrl(subcat, paged);
+                $cardsContainer.closest('.main-content').find('.subcategory-tab').removeClass('active');
+                if (subcat === 0) {
+                    $cardsContainer.closest('.main-content').find('.tab-parent').addClass('active');
+                } else {
+                    $cardsContainer.closest('.main-content').find('.subcategory-tab[data-filter="' + subcat + '"]').addClass('active');
+                }
+                return;
+            }
+
+            isLoading = true;
+            $cardsContainer.css('opacity', 0.4);
+
+            $.post(navaiAjax.ajaxurl, {
+                action:         'navai_load_category_cards',
+                nonce:          navaiAjax.nonce,
+                parent_term_id: catParentTermId,
+                subcat:         subcat,
+                paged:          paged,
+                per_page:       catPerPage
+            }).done(function(res) {
+                $cardsContainer.css('opacity', 1);
+                if (res.success && res.data) {
+                    localCache[key] = res.data;
+                    setCardsHtml(res.data);
+                    currentSubcat = subcat;
+                    currentPaged  = paged;
+                    $('body').data('navai-current-paged', paged);
+                    updateUrl(subcat, paged);
+                    $cardsContainer.closest('.main-content').find('.subcategory-tab').removeClass('active');
+                    if (subcat === 0) {
+                        $cardsContainer.closest('.main-content').find('.tab-parent').addClass('active');
+                    } else {
+                        $cardsContainer.closest('.main-content').find('.subcategory-tab[data-filter="' + subcat + '"]').addClass('active');
+                    }
+                } else {
+                    // 服务端错误 → 整页跳转兜底
+                    var fallbackUrl = window.location.href.replace(/[?&](subcat|paged)=[^&]*/g, '');
+                    if (subcat > 0) fallbackUrl += (fallbackUrl.indexOf('?') !== -1 ? '&' : '?') + 'subcat=' + subcat;
+                    if (paged  > 1) fallbackUrl += (fallbackUrl.indexOf('?') !== -1 ? '&' : '?') + 'paged='  + paged;
+                    window.location.href = fallbackUrl;
+                }
+            }).fail(function() {
+                $cardsContainer.css('opacity', 1);
+                // 网络错误 → 整页跳转兜底
+                var fallbackUrl = window.location.href.replace(/[?&](subcat|paged)=[^&]*/g, '');
+                if (subcat > 0) fallbackUrl += (fallbackUrl.indexOf('?') !== -1 ? '&' : '?') + 'subcat=' + subcat;
+                if (paged  > 1) fallbackUrl += (fallbackUrl.indexOf('?') !== -1 ? '&' : '?') + 'paged='  + paged;
+                window.location.href = fallbackUrl;
+            }).always(function() {
+                isLoading = false;
+            });
+        }
+
+        // ========== 统一委托：首页 Tab + 分类页 Tab 都不会发生整页跳转 ==========
+        // （“更多”按钮使用独立 class .more-detail-btn，不在此选择器范围内，点击自然跳转）
+        $(document).on('click', '.subcategory-tabs .subcategory-tab', function(e) {
+            e.preventDefault();
+
+            var $tab     = $(this);
+            var $tabs    = $tab.closest('.subcategory-tabs');
+            var rawFilter = String($tab.attr('data-filter') || '');
+            var subcat = (rawFilter === 'all' || rawFilter === '') ? 0 : parseInt(rawFilter, 10) || 0;
+
+            // 分类页场景：有 #navai-cards-container 且 tab 在 .main-content 内
+            if ($cardsContainer && $cardsContainer.length && $tab.closest('.main-content').length) {
+                loadSubcat(subcat, 1);
+                return;
+            }
+
+            // 首页场景：tab 在 .category-section 内
+            var $section = $tab.closest('.category-section');
+            if (!$section.length) return;
+
+            var parentTermId = parseInt($tabs.attr('data-parent'), 10) || 0;
+
+            // 更新激活态（立即反馈）
+            $tabs.find('.subcategory-tab').removeClass('active');
+            $tab.addClass('active');
+
+            // 本地缓存命中（含悬停预取结果）→ 即时切换，零请求
+            var cacheKey = parentTermId + '_' + subcat + '_1_20';
+            if (localCache[cacheKey]) {
+                renderHomeSection($section, localCache[cacheKey], subcat);
+                return;
+            }
+
+            // 未命中 → AJAX 兜底
+            var $grid = $section.find('.sites-grid');
+            $grid.css('opacity', 0.4);
+            ajaxLoadCards(parentTermId, subcat, 1, 20, function(data) {
+                $grid.css('opacity', 1);
+                renderHomeSection($section, data, subcat);
+            }, function() {
+                // 网络/服务端错误 → 恢复并回退到整页跳转兜底
+                $grid.css('opacity', 1);
+                $tabs.find('.subcategory-tab').removeClass('active');
+                $tab.addClass('active');
+                var href = $tab.attr('href') || '';
+                if (href) window.location.href = href;
+            });
+        });
+
+        // 分类页分页链接拦截
+        $(document).on('click', '#navai-cards-container .pagination a', function(e) {
+            if (!$cardsContainer || $cardsContainer[0] !== document.getElementById('navai-cards-container')) return;
+            var targetPaged = getPaginationTarget($(this));
+            if (targetPaged < 1) return;
+            e.preventDefault();
+            loadSubcat(currentSubcat, targetPaged);
+        });
+
+        // 初始化分类页（仅当 #navai-cards-container 存在时）
+        initCategoryPage();
     }
 
     /**

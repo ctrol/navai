@@ -4,7 +4,7 @@
  *
  * @package NavAi
  * @author 老九
- * @version 1.29.22
+ * @version 1.1.1
  */
 
 if ( ! defined('ABSPATH')) {
@@ -26,7 +26,9 @@ $ai_count = wp_count_posts('ai_tool')->publish;
 	<?php wp_head(); ?>
 </head>
 
-<body <?php body_class(); ?> <?php echo is_singular('ai_tool') ? 'data-post-id="' . esc_attr(get_queried_object_id()) . '"' : ''; ?>>
+<body <?php body_class(); ?>
+<?php echo is_singular('ai_tool') ? 'data-post-id="' . esc_attr(get_queried_object_id()) . '"' : ''; ?>
+<?php if (is_tax('ai_category')) : $n = get_query_var('paged') ? get_query_var('paged') : 1; echo 'data-navai-current-paged="' . esc_attr($n) . '"'; endif; ?>>
 <?php wp_body_open(); ?>
 <a class="skip-link screen-reader-text" href="#main"><?php esc_html_e( '跳至内容', 'navai' ); ?></a>
 

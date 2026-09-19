@@ -990,6 +990,45 @@ a.subcategory-tab {
     font-weight: 600;
 }
 
+/* “更多”按钮：白底描边胶囊，与 Tab 行视觉语言一致但通过描边+加号区分 */
+.more-detail-btn {
+    margin-left: auto;
+    align-self: center;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary-color);
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-full);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.more-detail-btn::before {
+    content: '+';
+    font-size: 15px;
+    line-height: 1;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.more-detail-btn:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--white);
+}
+
+.more-detail-btn:hover::before {
+    color: var(--white);
+}
+
 /* Sites Grid - 左右结构布局 */
 .sites-grid {
     display: grid;
@@ -1095,34 +1134,6 @@ a.subcategory-tab {
 .color-6 { background: #666666; }
 .color-7 { background: #888888; }
 .color-8 { background: #aaaaaa; }
-
-/* More Sites Button */
-.more-sites {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.btn-more {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 24px;
-    font-size: 14px;
-    color: var(--gray-600);
-    background: var(--gray-100);
-    border-radius: 20px;
-    transition: all 0.2s;
-}
-
-.btn-more:hover {
-    background: var(--gray-200);
-    color: var(--gray-900);
-}
-
-.btn-more i {
-    width: 16px;
-    height: 16px;
-}
 
 /* Empty States */
 .no-sites,

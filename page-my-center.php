@@ -4,7 +4,7 @@
  * Description: 显示用户的收藏和评分记录
  *
  * @package NavAi
- * @version 1.29.66
+ * @version 1.1.1
  */
 
 if (!defined('ABSPATH')) {

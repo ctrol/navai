@@ -484,6 +484,7 @@ function navai_enqueue_scripts() {
 		'str_voted'      => __('您已投过票', 'navai'),
 		'str_rated'      => __('感谢评分！', 'navai'),
 		'str_error'      => __('操作失败，请重试', 'navai'),
+		'str_no_results' => __('该分类下暂无AI工具', 'navai'),
 	));
 }
 add_action('wp_enqueue_scripts', 'navai_enqueue_scripts');
@@ -719,9 +720,10 @@ function navai_visits_orderby($query) {
 	add_action('pre_get_posts', 'navai_visits_orderby');
 
 /**
- * 分类归档页每页显示75张卡片（5列×15行）
+ * 分类归档页查询参数：每页75张卡片 + 强制 post_type=ai_tool
  *
- * 支持URL参数 subcat=N，用于子分类Tab分页时按子分类过滤主查询。
+ * 子分类过滤由模板内的自定义 WP_Query 处理（?subcat=N 参数），
+ * 此处控制主查询的每页数量及文章类型，确保主查询始终查询 ai_tool。
  *
  * @param WP_Query $query 查询对象
  */
@@ -730,28 +732,9 @@ function navai_category_posts_per_page($query) {
 		return;
 	}
 
-	if (is_tax('ai_category')) {
+	if ($query->is_tax('ai_category')) {
 		$query->set('posts_per_page', 75);
-
-		// subcat 参数：按子分类（含全部后代）过滤
-		$subcat_id = isset($_GET['subcat']) ? absint($_GET['subcat']) : 0;
-		if ($subcat_id > 0) {
-			// 获取该子分类的全部后代（递归）
-			$terms_to_query = array($subcat_id);
-			$all_descendants = get_term_children($subcat_id, 'ai_category');
-			if (!is_wp_error($all_descendants) && !empty($all_descendants)) {
-				$terms_to_query = array_merge($terms_to_query, $all_descendants);
-			}
-
-			$tax_query = array(
-				array(
-					'taxonomy' => 'ai_category',
-					'field'    => 'term_id',
-					'terms'    => $terms_to_query,
-				),
-			);
-			$query->set('tax_query', $tax_query);
-		}
+		$query->set('post_type', 'ai_tool');
 	}
 }
 add_action('pre_get_posts', 'navai_category_posts_per_page');
@@ -1295,6 +1278,306 @@ function navai_save_ai_tool_meta($post_id) {
 	}
 }
 add_action('save_post_ai_tool', 'navai_save_ai_tool_meta');
+
+/**
+ * ============================================================================
+ * 分类 Tab AJAX 快速切换支持
+ *
+ * 当用户点击分类页的子分类 Tab 时，通过 AJAX 只请求该 subcat 的卡片 HTML
+ * 与分页 HTML，避免整页 reload，显著降低响应延迟。
+ * ============================================================================
+ */
+
+/**
+ * 根据 term_id + paged 构建分类页卡片 HTML（与 taxonomy-ai_category.php 逻辑保持一致）。
+ *
+ * 使用 WordPress Object Cache（transient）做短 TTL 缓存，
+ * 对同一 subcat 的重复访问直接返回缓存，避免重复 DB 查询。
+ *
+ * @param int   $term_id   分类 term_id
+ * @param int   $paged     页码，从 1 起
+ * @param int   $per_page  每页条数，默认 75
+ * @return array ['cards_html' => string, 'total_pages' => int, 'no_results' => bool]
+ */
+function navai_build_category_cards($term_id, $paged = 1, $per_page = 75) {
+	$term_id  = (int) $term_id;
+	$paged    = max(1, (int) $paged);
+	$per_page = max(1, (int) $per_page);
+
+	$cache_key = 'navai_cathtml_' . $term_id . '_' . $paged . '_' . $per_page;
+
+	// 第一层：wp_cache（请求内热缓存，AJAX 多次调用同一分类时有效）
+	$cached = wp_cache_get($cache_key, 'navai_catcards');
+	if ($cached !== false && is_array($cached)
+		&& isset($cached['cards_html'], $cached['total_pages'])) {
+		return $cached;
+	}
+
+	// 第二层：transient（跨请求持久缓存，存 wp_options 表，TTL 10分钟）
+	// key 必须包含 per_page 维度：首页用 20、分类页用 75，否则两种调用会互相污染
+	$transient_key = 'navai_ch_' . $term_id . '_' . $per_page . '_' . $paged;
+	$cached = get_transient($transient_key);
+	if (is_array($cached) && isset($cached['cards_html'], $cached['total_pages'])) {
+		// 回填 wp_cache
+		wp_cache_set($cache_key, $cached, 'navai_catcards', 300);
+		return $cached;
+	}
+
+	// 收集该分类及全部后代 term_id
+	$terms_to_query = array($term_id);
+	$descendants    = get_term_children($term_id, 'ai_category');
+	if (!is_wp_error($descendants) && !empty($descendants)) {
+		$terms_to_query = array_merge($terms_to_query, array_map('intval', $descendants));
+	}
+	$terms_to_query = array_values(array_unique(array_map('intval', $terms_to_query)));
+
+	// 只查当前页（标准 paged + posts_per_page），不做全量查询
+	$query = new WP_Query(array(
+		'post_type'      => 'ai_tool',
+		'post_status'    => 'publish',
+		'posts_per_page' => $per_page,
+		'paged'          => $paged,
+		'orderby'        => 'date',
+		'order'          => 'DESC',
+		'tax_query'      => array(
+			array(
+				'taxonomy'         => 'ai_category',
+				'field'            => 'term_id',
+				'terms'            => $terms_to_query,
+				'include_children' => false,
+			),
+		),
+	));
+
+	$total_pages = (int) $query->max_num_pages;
+
+	// 回退：若 include_children=false 无结果，用标准 include_children=true 再查一次
+	if (empty($query->posts)) {
+		$query = new WP_Query(array(
+			'post_type'      => 'ai_tool',
+			'post_status'    => 'publish',
+			'posts_per_page' => $per_page,
+			'paged'          => $paged,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+			'tax_query'      => array(
+				array(
+					'taxonomy'         => 'ai_category',
+					'field'            => 'term_id',
+					'terms'            => array($term_id),
+					'include_children' => true,
+				),
+			),
+		));
+		$total_pages = (int) $query->max_num_pages;
+	}
+
+	// 渲染卡片 HTML（传入已查好的 post 对象数组，避免重复 DB 查询）
+	$cards_html = navai_render_card_items($query->posts, $query->max_num_pages);
+
+	$cache_result = array(
+		'cards_html'  => $cards_html,
+		'total_pages' => $total_pages,
+		'no_results'  => empty($query->posts),
+		'found_posts' => (int) $query->found_posts,
+	);
+
+	// 写入两层缓存（transient TTL 10分钟，防止大分类缓存过大）
+	if ($total_pages < 100 && $cards_html !== '') {
+		set_transient($transient_key, $cache_result, 600); // 10分钟
+		wp_cache_set($cache_key, $cache_result, 'navai_catcards', 300);
+	}
+
+	return $cache_result;
+}
+
+/**
+ * 将 post 对象数组渲染为卡片 HTML。
+ *
+ * 接收 WP_Query 返回的 $posts 数组（含完整 post 对象），
+ * 每条只需 1 次 get_post_meta 批读 + 1 次 get_the_post_thumbnail_url，
+ * 大幅减少独立 DB 往返。
+ *
+ * @param array $posts     WP_Query->posts（WP_Post 对象数组）
+ * @param int   $total_pages 仅供参考（未使用）
+ * @return string
+ */
+function navai_render_card_items($posts, $total_pages = 0) {
+	if (empty($posts)) {
+		return '';
+	}
+
+	// 批量预取所有 post 的 4 项 meta：1 次 SQL 代替 N×4 次 get_post_meta
+	$post_ids   = array_map(function($p) { return $p->ID; }, $posts);
+	$meta_map   = array();
+	if (!empty($post_ids)) {
+		global $wpdb;
+		$ids      = array_map('intval', $post_ids);
+		$in       = implode(',', $ids);
+		$results  = $wpdb->get_results("SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id IN ($in) AND meta_key IN ('_website_url','_site_icon_url','_icon_color','_excerpt')");
+		foreach ($results as $row) {
+			if (!isset($meta_map[$row->post_id])) {
+				$meta_map[$row->post_id] = array(
+					'_website_url'   => '',
+					'_site_icon_url' => '',
+					'_icon_color'    => '',
+					'_excerpt'       => '',
+				);
+			}
+			$meta_map[$row->post_id][$row->meta_key] = $row->meta_value;
+		}
+	}
+
+	$html_parts = array();
+
+	foreach ($posts as $post_obj) {
+		$pid             = $post_obj->ID;
+		$card_website_url = $meta_map[$pid]['_website_url'];
+		$card_site_icon   = $meta_map[$pid]['_site_icon_url'];
+		$card_icon_color  = $meta_map[$pid]['_icon_color'];
+		if (empty($card_icon_color)) {
+			$card_icon_color = (int) (crc32($pid) % 8) + 1; // 稳定伪随机，替代 wp_rand
+		}
+		$card_thumbnail   = get_the_post_thumbnail_url($pid, 'thumbnail');
+		$card_excerpt     = wp_trim_words(navai_decode_entities($meta_map[$pid]['_excerpt']), 12);
+		if (empty($card_excerpt)) {
+			$card_excerpt = wp_trim_words(navai_decode_entities($post_obj->post_excerpt), 12);
+		}
+		if (empty($card_excerpt)) {
+			// 兜底：网站简介实际常存于 post_content（批量导入/贡献投稿），去 HTML 标签后取
+			$card_excerpt = wp_trim_words(wp_strip_all_tags(navai_decode_entities($post_obj->post_content)), 12);
+		}
+
+		$card_full_title = navai_get_clean_title($pid);
+		if (mb_strlen($card_full_title, 'UTF-8') > 8) {
+			$card_title = mb_substr($card_full_title, 0, 8, 'UTF-8') . '...';
+		} else {
+			$card_title = $card_full_title;
+		}
+
+		$permalink    = get_permalink($pid);
+		$external_url = $card_website_url ? esc_url($card_website_url) : esc_url($permalink);
+		$icon_first_char = esc_html(mb_substr($card_full_title, 0, 1, 'UTF-8'));
+		$onerror_handler = "var p=this.parentElement;p.classList.add('color-" . esc_attr($card_icon_color) . "');this.style.display='none';this.nextElementSibling.style.display='flex';";
+
+		$card_html = '<div class="ai-card" data-post-id="' . esc_attr($pid) . '">';
+		$card_html .= '<a href="' . $external_url . '" class="ai-card-left" target="_blank" rel="noopener noreferrer" title="' . esc_attr($card_full_title) . '">';
+		$card_html .= '<div class="ai-card-icon' . (!$card_site_icon && !$card_thumbnail ? ' color-' . esc_attr($card_icon_color) : '') . '">';
+		if ($card_site_icon) {
+			$card_html .= '<img src="' . esc_url($card_site_icon) . '" alt="' . esc_attr($card_full_title) . '" data-icon-color="' . esc_attr($card_icon_color) . '" onerror="' . $onerror_handler . '">';
+			$card_html .= '<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;">' . $icon_first_char . '</span>';
+		} elseif ($card_thumbnail) {
+			$card_html .= '<img src="' . esc_url($card_thumbnail) . '" alt="' . esc_attr($card_full_title) . '" data-icon-color="' . esc_attr($card_icon_color) . '" onerror="' . $onerror_handler . '">';
+			$card_html .= '<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;">' . $icon_first_char . '</span>';
+		} else {
+			$card_html .= $icon_first_char;
+		}
+		$card_html .= '</div></a>';
+		$card_html .= '<a href="' . esc_url($permalink) . '" class="ai-card-right" rel="noopener noreferrer" title="' . esc_attr($card_full_title) . '">';
+		$card_html .= '<h3 class="ai-card-name">' . esc_html($card_title) . '</h3>';
+		$card_html .= '<p class="ai-card-desc">' . esc_html($card_excerpt) . '</p>';
+		$card_html .= '</a></div>';
+
+		$html_parts[] = $card_html;
+	}
+
+	return implode('', $html_parts);
+}
+
+/**
+ * AJAX handler：返回指定 subcat + paged 的卡片 HTML 和分页 HTML。
+ *
+ * @return void
+ */
+function navai_ajax_load_category_cards() {
+	// 允许游客访问（分类页本身无需登录）
+	check_ajax_referer('navai_nonce', 'nonce');
+
+	$parent_term_id = isset($_POST['parent_term_id']) ? absint($_POST['parent_term_id']) : 0;
+	$subcat         = isset($_POST['subcat']) ? absint($_POST['subcat']) : 0; // 0 = 父分类本身
+	$paged          = isset($_POST['paged']) ? absint($_POST['paged']) : 1;
+	// per_page 可由前端指定（首页每区块 20 条，分类页 75 条），默认 75
+	$per_page       = isset($_POST['per_page']) ? max(1, min(100, absint($_POST['per_page']))) : 75;
+
+	// 验证 parent_term_id 有效
+	if ($parent_term_id > 0) {
+		$parent_term = get_term($parent_term_id, 'ai_category');
+		if (!$parent_term || is_wp_error($parent_term)) {
+			wp_send_json_error(array('message' => '无效的一级分类'));
+		}
+	}
+
+	// subcat > 0 时验证是 parent_term 的子分类（防止任意 term_id 查询）
+	$target_term_id = $subcat > 0 ? $subcat : $parent_term_id;
+	if ($subcat > 0) {
+		$subcat_term = get_term($subcat, 'ai_category');
+		if (!$subcat_term || is_wp_error($subcat_term)) {
+			wp_send_json_error(array('message' => '无效的子分类'));
+		}
+	}
+
+	$result = navai_build_category_cards($target_term_id, $paged, $per_page);
+
+	// 构建分页 HTML（仅分类页有分页，首页每区块固定 20 条无分页）
+	$pagination_html = '';
+	if ($result['total_pages'] > 1 && $per_page > 20) {
+		// base 取当前分类页 URL（AJAX 请求中 current_url 是 admin-ajax.php，不可用）
+		$category_url = $parent_term_id > 0 ? get_term_link($parent_term_id, 'ai_category') : home_url('/');
+		if (is_wp_error($category_url)) {
+			$category_url = home_url('/');
+		}
+		$add_args = $subcat > 0 ? array('subcat' => $subcat) : array();
+
+		$pagination_html = paginate_links(array(
+			'base'      => $category_url . '%_pagination_%',
+			'format'    => '',
+			'prev_text' => '<i data-lucide="chevron-left"></i>',
+			'next_text' => '<i data-lucide="chevron-right"></i>',
+			'total'     => $result['total_pages'],
+			'current'   => $paged,
+			'add_args'  => $add_args,
+		));
+	}
+
+	wp_send_json_success(array(
+		'cards_html'    => $result['cards_html'],
+		'total_pages'   => $result['total_pages'],
+		'no_results'    => $result['no_results'],
+		'pagination'    => $pagination_html,
+	));
+}
+add_action('wp_ajax_navai_load_category_cards', 'navai_ajax_load_category_cards');
+add_action('wp_ajax_nopriv_navai_load_category_cards', 'navai_ajax_load_category_cards');
+
+/**
+ * 在 ai_tool post 保存/删除/分类变更时清除分类卡片缓存，防止显示旧数据。
+ *
+ * @return void
+ */
+function navai_flush_category_card_cache() {
+	// 清除 wp_options 中的 transient 缓存（跨请求持久缓存）
+	// transient key 格式：navai_ch_{term_id}_{per_page}_{paged}
+	global $wpdb;
+	$wpdb->query(
+		"DELETE FROM {$wpdb->options}
+		 WHERE option_name LIKE '_transient_navai_ch\_%'
+		    OR option_name LIKE '_transient_timeout_navai_ch\_%'
+		"
+	);
+	// 清除 object cache group（如果有 persistent object cache 插件）
+	wp_cache_delete('navai_catcards_all', 'navai_catcards');
+}
+add_action('save_post_ai_tool', 'navai_flush_category_card_cache');
+add_action('deleted_post', function($post_id) {
+	if (get_post_type($post_id) === 'ai_tool') {
+		navai_flush_category_card_cache();
+	}
+});
+add_action('clean_term_cache', function($term_id) {
+	if (get_taxonomy($term_id) === 'ai_category' || taxonomy_exists('ai_category')) {
+		navai_flush_category_card_cache();
+	}
+});
 
 /**
  * 显示网址重复检测错误提示

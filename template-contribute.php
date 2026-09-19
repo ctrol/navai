@@ -5,7 +5,7 @@
  *
  * @package NavAi
  * @author 老九
- * @version 1.29.22
+ * @version 1.1.1
  */
 
 if ( ! defined('ABSPATH')) {

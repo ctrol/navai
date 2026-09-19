@@ -27,17 +27,8 @@ if (mb_strlen($card_full_title, 'UTF-8') > 8) {
 } else {
 	$card_title = $card_full_title;
 }
-
-// 获取该文章所属的分类ID（用于筛选）
-$post_terms = get_the_terms($card_post_id, 'ai_category');
-$term_ids = array();
-if ( ! empty($post_terms) && !is_wp_error($post_terms)) {
-	foreach ($post_terms as $t) {
-		$term_ids[] = $t->term_id;
-	}
-}
 ?>
-<div class="ai-card" data-post-id="<?php echo esc_attr($card_post_id); ?>" data-terms="<?php echo esc_attr(implode(',', $term_ids)); ?>">
+<div class="ai-card" data-post-id="<?php echo esc_attr($card_post_id); ?>">
 	<a href="<?php echo $card_website_url ? esc_url($card_website_url) : esc_url(get_permalink()); ?>"
        class="ai-card-left"
        target="_blank"

@@ -4,7 +4,7 @@
  *
  * @package NavAi
  * @author 老九
- * @version 1.29.22
+ * @version 1.1.1
  */
 
 // 防止直接访问
@@ -14,43 +14,80 @@ if ( ! defined('ABSPATH')) {
 
 get_header();
 get_sidebar();
+
+// 获取当前分类
+$term          = get_queried_object();
+$category_name = $term ? $term->name : __('AI工具', 'navai');
+
+// 获取子分类
+$child_categories = get_terms(array(
+	'taxonomy'   => 'ai_category',
+	'parent'     => $term ? $term->term_id : 0,
+	'hide_empty' => false,
+	'orderby'    => 'name',
+	'order'      => 'ASC',
+));
+$has_children = ! empty($child_categories) && ! is_wp_error($child_categories);
+
+// 当前激活的子分类（来自URL参数 subcat）
+$active_subcat = isset($_GET['subcat']) ? absint($_GET['subcat']) : 0;
+$active_term   = $term;
+$is_subcat_page = false;
+
+// 验证子分类存在、未被删除，并明确按当前 Tab 指向的分类自身数据查询
+if ($active_subcat > 0) {
+	$subcat_term = get_term($active_subcat, 'ai_category');
+	if ($subcat_term && !is_wp_error($subcat_term)) {
+		$active_term    = $subcat_term;
+		$is_subcat_page = true;
+	}
+}
+
+// 获取分类图标
+$section_icon = 'folder-open';
+if (function_exists('navai_get_section_icon')) {
+	$section_icon = navai_get_section_icon($category_name);
+}
+
+// 当前分类URL（用于构建Tab链接）
+$category_url = $term ? get_term_link($term) : home_url('/');
+if (is_wp_error($category_url)) {
+	$category_url = home_url('/');
+}
+
+// 当前激活 Tab 对应的分类 URL：父分类使用原分类页 URL，子分类必须附加 subcat 参数
+$active_tab_url = $category_url;
+if ($is_subcat_page) {
+	$active_tab_url = add_query_arg('subcat', $active_subcat, $category_url);
+}
+
+// 使用 navai_build_category_cards() 构建当前 Tab 的卡片数据（带 object cache）
+// 父分类：target = $term->term_id；子分类：target = $active_subcat
+$target_term_id = $is_subcat_page ? $active_subcat : ($term ? $term->term_id : 0);
+$paged          = max(1, get_query_var('paged') ? get_query_var('paged') : 1);
+
+if (function_exists('navai_build_category_cards') && $target_term_id > 0) {
+	$cards_result = navai_build_category_cards($target_term_id, $paged, 75);
+	$cards_html   = $cards_result['cards_html'];
+	$total_pages  = $cards_result['total_pages'];
+	$no_results   = $cards_result['no_results'];
+} else {
+	// Fallback：辅助函数不存在时（理论上不会发生）
+	$cards_html = '';
+	$total_pages = 1;
+	$no_results  = true;
+}
 ?>
 
 <div class="main-content">
-	<?php
-	$term = get_queried_object();
-	$category_name = $term ? $term->name : __('AI工具', 'navai');
-
-	// 获取子分类
-	$child_categories = get_terms(array(
-		'taxonomy'   => 'ai_category',
-		'parent'     => $term->term_id,
-		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-	));
-	$has_children = !empty($child_categories) && !is_wp_error($child_categories);
-
-	// 当前激活的子分类（来自URL参数 subcat）
-	$active_subcat = isset($_GET['subcat']) ? absint($_GET['subcat']) : 0;
-	$is_subcat_page = $active_subcat > 0;
-
-	// 获取分类图标
-	$section_icon = 'folder-open';
-	if (function_exists('navai_get_section_icon')) {
-		$section_icon = navai_get_section_icon($category_name);
-	}
-
-	// 当前分类URL（用于构建Tab链接）
-	$category_url = $term ? get_term_link($term) : home_url('/');
-	if (is_wp_error($category_url)) {
-		$category_url = home_url('/');
-	}
-	?>
-
 	<!-- 子分类Tab（含一级分类名称） -->
-	<div class="subcategory-tabs" data-parent="<?php echo esc_attr($term ? $term->term_id : 0); ?>">
-		<a href="<?php echo esc_url($category_url); ?>" class="subcategory-tab tab-parent<?php if (!$is_subcat_page) : ?> active<?php endif; ?>" data-filter="all">
+	<!-- data-parent + data-current-subcat 供 JS AJAX 切换使用 -->
+	<div class="subcategory-tabs"
+	     data-parent="<?php echo esc_attr($term ? $term->term_id : 0); ?>"
+	     data-current-subcat="<?php echo esc_attr($active_subcat); ?>">
+		<a href="<?php echo esc_url($category_url); ?>"
+		   class="subcategory-tab tab-parent<?php if (!$is_subcat_page) : ?> active<?php endif; ?>"
+		   data-filter="all">
 			<span class="section-icon">
 				<i data-lucide="<?php echo esc_attr($section_icon); ?>"></i>
 			</span>
@@ -58,108 +95,35 @@ get_sidebar();
 		</a>
 		<?php if ($has_children) : ?>
 		<?php foreach ($child_categories as $child) : ?>
-		<a href="<?php echo esc_url(add_query_arg('subcat', $child->term_id, $category_url)); ?>" class="subcategory-tab<?php if ($active_subcat === (int) $child->term_id) : ?> active<?php endif; ?>" data-filter="<?php echo esc_attr($child->term_id); ?>">
+		<a href="<?php echo esc_url(add_query_arg('subcat', $child->term_id, $category_url)); ?>"
+		   class="subcategory-tab<?php if ($active_subcat === (int) $child->term_id) : ?> active<?php endif; ?>"
+		   data-filter="<?php echo esc_attr($child->term_id); ?>">
 			<?php echo esc_html($child->name); ?>
 		</a>
 		<?php endforeach; ?>
 		<?php endif; ?>
 	</div>
 
-	<?php if (have_posts()) : ?>
+	<!-- 卡片容器：JS AJAX 切换时替换此 div 内容 -->
+	<div id="navai-cards-container">
+	<?php if (!$no_results && $cards_html !== '') : ?>
 	<!-- 网址网格 -->
 	<div class="sites-grid">
-		<?php while (have_posts()) : the_post(); ?>
-			<?php
-			$post_id     = get_the_ID();
-			$website_url = get_post_meta($post_id, '_website_url', true);
-			$site_icon_url = get_post_meta($post_id, '_site_icon_url', true);
-			$icon_color  = get_post_meta($post_id, '_icon_color', true);
-
-			if (empty($icon_color)) {
-				$icon_color = wp_rand(1, 8);
-			}
-
-			$thumbnail = get_the_post_thumbnail_url($post_id, 'thumbnail');
-			$excerpt   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 12);
-
-			// 获取该文章所属的分类ID（含祖先链）
-			$post_terms = get_the_terms($post_id, 'ai_category');
-			$term_ids = array();
-			if ( ! empty($post_terms) && !is_wp_error($post_terms)) {
-				foreach ($post_terms as $t) {
-					$term_ids[] = $t->term_id;
-					// 加入祖先链
-					$ancestor = $t->parent;
-					while ($ancestor > 0) {
-						$term_ids[] = $ancestor;
-						$ancestor_term = get_term($ancestor, 'ai_category');
-						$ancestor = $ancestor_term && !is_wp_error($ancestor_term) ? (int) $ancestor_term->parent : 0;
-					}
-				}
-				$term_ids = array_unique($term_ids);
-			}
-			?>
-
-			<?php
-			// 内联 AI 卡片模板（原 template-parts/content-ai-card.php）
-			$card_post_id     = get_the_ID();
-			$card_website_url = get_post_meta($card_post_id, '_website_url', true);
-			$card_site_icon   = get_post_meta($card_post_id, '_site_icon_url', true);
-			$card_icon_color  = get_post_meta($card_post_id, '_icon_color', true);
-			if (empty($card_icon_color)) {
-				$card_icon_color = wp_rand(1, 8);
-			}
-			$card_thumbnail = get_the_post_thumbnail_url($card_post_id, 'thumbnail');
-			$card_excerpt   = wp_trim_words(navai_decode_entities(get_the_excerpt()), 12);
-
-			// 标题截断：超过8个字时截断并添加省略号（先解码HTML数字实体，避免显示 &#8213; 之类字面文本）
-			$card_full_title = navai_get_clean_title($card_post_id);
-			if (mb_strlen($card_full_title, 'UTF-8') > 8) {
-				$card_title = mb_substr($card_full_title, 0, 8, 'UTF-8') . '...';
-			} else {
-				$card_title = $card_full_title;
-			}
-			?>
-			<div class="ai-card" data-terms="<?php echo esc_attr(implode(',', $term_ids)); ?>">
-				<a href="<?php echo $card_website_url ? esc_url($card_website_url) : esc_url(get_permalink()); ?>"
-                   class="ai-card-left"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   title="<?php echo esc_attr($card_full_title); ?>">
-					<div class="ai-card-icon<?php if (!$card_site_icon && !$card_thumbnail) : ?> color-<?php echo esc_attr($card_icon_color); ?><?php endif; ?>">
-						<?php if ($card_site_icon) : ?>
-							<img src="<?php echo esc_url($card_site_icon); ?>" alt="<?php echo esc_attr($card_full_title); ?>" data-icon-color="<?php echo esc_attr($card_icon_color); ?>" onerror="var p=this.parentElement;p.classList.add('color-<?php echo esc_attr($card_icon_color); ?>');this.style.display='none';this.nextElementSibling.style.display='flex';">
-							<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;"><?php echo esc_html(mb_substr($card_full_title, 0, 1, 'UTF-8')); ?></span>
-						<?php elseif ($card_thumbnail) : ?>
-							<img src="<?php echo esc_url($card_thumbnail); ?>" alt="<?php echo esc_attr($card_full_title); ?>" data-icon-color="<?php echo esc_attr($card_icon_color); ?>" onerror="var p=this.parentElement;p.classList.add('color-<?php echo esc_attr($card_icon_color); ?>');this.style.display='none';this.nextElementSibling.style.display='flex';">
-							<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;"><?php echo esc_html(mb_substr($card_full_title, 0, 1, 'UTF-8')); ?></span>
-						<?php else : ?>
-							<?php echo esc_html(mb_substr($card_full_title, 0, 1, 'UTF-8')); ?>
-						<?php endif; ?>
-					</div>
-				</a>
-				<a href="<?php echo esc_url(get_permalink()); ?>"
-                   class="ai-card-right"
-                   rel="noopener noreferrer"
-                   title="<?php echo esc_attr($card_full_title); ?>">
-					<h3 class="ai-card-name"><?php echo esc_html($card_title); ?></h3>
-					<p class="ai-card-desc"><?php echo esc_html($card_excerpt); ?></p>
-				</a>
-			</div>
-		<?php endwhile; ?>
+		<?php echo $cards_html; ?>
 	</div>
 
 	<!-- 分页 -->
-	<?php
-	$pagination = paginate_links(array(
-		'prev_text' => '<i data-lucide="chevron-left"></i>',
-		'next_text' => '<i data-lucide="chevron-right"></i>',
-		'add_args'   => $is_subcat_page ? array('subcat' => $active_subcat) : array(),
-	));
-	if ($pagination) :
-	?>
+	<?php if ($total_pages > 1) : ?>
 	<nav class="pagination" aria-label="<?php esc_attr_e('分页导航', 'navai'); ?>">
-		<?php echo $pagination; ?>
+		<?php
+		echo paginate_links(array(
+			'prev_text'  => '<i data-lucide="chevron-left"></i>',
+			'next_text'  => '<i data-lucide="chevron-right"></i>',
+			'total'      => $total_pages,
+			'current'    => $paged,
+			'add_args'   => $is_subcat_page ? array('subcat' => $active_subcat) : array(),
+		));
+		?>
 	</nav>
 	<?php endif; ?>
 
@@ -169,6 +133,7 @@ get_sidebar();
 		<p><?php esc_html_e('该分类下暂无AI工具', 'navai'); ?></p>
 	</div>
 	<?php endif; ?>
+	</div><!-- /#navai-cards-container -->
 </div>
 
 <?php get_footer(); ?>

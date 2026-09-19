@@ -3,7 +3,7 @@
  * NavAi 后台综合管理 Dashboard
  *
  * @package NavAi
- * @version 1.29.56
+ * @version 1.1.1
  */
 
 if (!defined('ABSPATH')) {
