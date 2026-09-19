@@ -6519,6 +6519,20 @@ function navai_get_current_mc_tab($default = 'bookmarks') {
 }
 }
 
+// 获取指定 Tab 的独立分页页码（每个 Tab 用独立的 GET 参数 mc-page-{tab}，互不干扰）
+if (!function_exists('navai_get_mc_tab_paged')) {
+    function navai_get_mc_tab_paged($tab_name = 'bookmarks') {
+        $param = 'mc-page-' . sanitize_key($tab_name);
+        if (isset($_GET[$param])) {
+            return max(1, absint($_GET[$param]));
+        }
+        if (isset($_REQUEST[$param])) {
+            return max(1, absint($_REQUEST[$param]));
+        }
+        return 1;
+    }
+}
+
 // 使用 parse_request 确保 Tab 参数在查询解析阶段就已设置（优先级最高）
 add_action('parse_request', function ($wp) {
     $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
@@ -7772,6 +7786,7 @@ add_action('admin_footer', function () {
 
 // [navai_my_bookmarks] - 显示当前用户的收藏列表
 add_shortcode('navai_my_bookmarks', function () {
+    $tab_name = 'bookmarks';
     $user_id = get_current_user_id();
     $bookmark_ids = navai_get_user_bookmarks($user_id);
     // 未登录用户尝试从 cookie 获取
@@ -7789,7 +7804,8 @@ add_shortcode('navai_my_bookmarks', function () {
 
     $total = count($bookmark_ids);
     $per_page = 15;
-    $paged = max(1, get_query_var('paged'));
+    // 各 Tab 独立分页：用独立 GET 参数 mc-page-bookmarks，互不干扰
+    $paged = navai_get_mc_tab_paged('bookmarks');
     $page_offset = ($paged - 1) * $per_page;
     $total_pages = ceil($total / $per_page);
     $page_ids = array_slice($bookmark_ids, $page_offset, $per_page);
@@ -7839,7 +7855,7 @@ add_shortcode('navai_my_bookmarks', function () {
     if ($total_pages > 1) {
         echo '<div class="navai-my-pagination" style="text-align:center;padding:20px 0;">';
         echo paginate_links(array(
-            'base'      => add_query_arg(array('paged' => '%#%', 'my-center-tab' => navai_get_current_mc_tab())),
+            'base'      => add_query_arg(array('mc-page-' . $tab_name => '%#%', 'my-center-tab' => $tab_name)),
             'format'    => '',
             'prev_text' => '&laquo;',
             'next_text' => '&raquo;',
@@ -7854,6 +7870,7 @@ add_shortcode('navai_my_bookmarks', function () {
 
 // [navai_my_ratings] - 显示当前用户的评分记录
 add_shortcode('navai_my_ratings', function () {
+    $tab_name = 'ratings';
     $user_id = get_current_user_id();
     $my_ratings = navai_get_user_ratings($user_id);
 
@@ -7863,7 +7880,8 @@ add_shortcode('navai_my_ratings', function () {
 
     $total = count($my_ratings);
     $per_page = 15;
-    $paged = max(1, get_query_var('paged'));
+    // 各 Tab 独立分页：用独立 GET 参数 mc-page-ratings，互不干扰
+    $paged = navai_get_mc_tab_paged('ratings');
     $page_offset = ($paged - 1) * $per_page;
     $total_pages = ceil($total / $per_page);
     $all_ids = array_keys($my_ratings);
@@ -7924,7 +7942,7 @@ add_shortcode('navai_my_ratings', function () {
     if ($total_pages > 1) {
         echo '<div class="navai-my-pagination" style="text-align:center;padding:20px 0;">';
         echo paginate_links(array(
-            'base'      => add_query_arg(array('paged' => '%#%', 'my-center-tab' => navai_get_current_mc_tab())),
+            'base'      => add_query_arg(array('mc-page-' . $tab_name => '%#%', 'my-center-tab' => $tab_name)),
             'format'    => '',
             'prev_text' => '&laquo;',
             'next_text' => '&raquo;',
@@ -8072,6 +8090,14 @@ add_shortcode('navai_my_center', function () {
             // 通过 History API 更新 URL 参数
             var url = new URL(window.location.href);
             url.searchParams.set('my-center-tab', tabName);
+            // 各 Tab 独立分页参数：切换 Tab 时仅保留当前 Tab 的分页参数，清除其他 Tab 的
+            var allTabs = ['bookmarks', 'ratings', 'submitted'];
+            for (var i = 0; i < allTabs.length; i++) {
+                if (allTabs[i] !== tabName) {
+                    url.searchParams.delete('mc-page-' + allTabs[i]);
+                }
+            }
+            // 兼容旧的全局 paged 参数：仅当从其他 Tab 切来且该 Tab 正在用旧参数时才清除
             url.searchParams.delete('paged');
             history.replaceState(null, '', url.toString());
             // 同时写入 Cookie 作为持久化保障
@@ -8112,13 +8138,15 @@ add_shortcode('navai_my_center', function () {
 
 // [navai_my_submitted] - 显示当前用户提交的网址
 add_shortcode('navai_my_submitted', function () {
+    $tab_name = 'submitted';
     $user_id = get_current_user_id();
     if (!$user_id) {
         return '<div class="navai-my-empty"><p>登录后可查看您提交的网址</p><a href="' . esc_url(wp_login_url(home_url('/my-center/'))) . '" class="button">登录</a></div>';
     }
 
     $per_page = 15;
-    $paged = max(1, get_query_var('paged'));
+    // 各 Tab 独立分页：用独立 GET 参数 mc-page-submitted，互不干扰
+    $paged = navai_get_mc_tab_paged('submitted');
 
     $query = new WP_Query(array(
         'post_type'      => 'ai_tool',
@@ -8171,7 +8199,7 @@ add_shortcode('navai_my_submitted', function () {
     if ($total_pages > 1) {
         echo '<div class="navai-my-pagination" style="text-align:center;padding:20px 0;">';
         echo paginate_links(array(
-            'base'      => add_query_arg(array('paged' => '%#%', 'my-center-tab' => navai_get_current_mc_tab())),
+            'base'      => add_query_arg(array('mc-page-' . $tab_name => '%#%', 'my-center-tab' => $tab_name)),
             'format'    => '',
             'prev_text' => '&laquo;',
             'next_text' => '&raquo;',
