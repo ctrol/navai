@@ -2017,11 +2017,40 @@ a.subcategory-tab {
     text-decoration: none;
 }
 
+/* 正在被回复的那条评论：在 <article class="comment-body"> 上加高亮环 + 浅色背景，
+   让用户明确知道表单对应的是这条（JS 把 .navai-reply-target 加到 <li class="comment">，
+   高亮环画在 <article> 上更贴合卡片视觉，避免 <li> 的 list-style/border-bottom 错位） */
+.comment.navai-reply-target .comment-body {
+    position: relative;
+    border: 2px solid var(--primary-color, #E53935);
+    border-radius: var(--radius-lg, 12px);
+    background: rgba(229, 57, 53, 0.04);
+    padding: 12px;
+}
+
+/* 嵌套子级（.children > .comment）在回复态时不额外加边框，保持嵌套背景色 */
+.children > .comment.navai-reply-target .comment-body {
+    border: none;
+    background: rgba(229, 57, 53, 0.04);
+}
+
 /* Comment Form */
 .comment-respond {
     margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--gray-200);
+    padding: 20px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--gray-50, #F9FAFB);
+}
+
+/* 表单容器本身在回复态时也用红色边框呼应，与上方被回复评论形成视觉对应。
+   仅依赖 JS 加的 .navai-replying 类（由 MutationObserver 监听 cancel 链接显隐切换）——
+   不能用 :has(#cancel-comment-reply-link)，因为该 cancel 链接是核心 comment_id_fields() 默认输出的、
+   带内联 display:none 的静态节点，:has() 是纯结构选择器、无视 display:none，
+   会导致回复态样式在默认态就命中，没有视觉对比度。 */
+#respond.navai-replying {
+    border-color: var(--primary-color, #E53935);
+    background: rgba(229, 57, 53, 0.03);
 }
 
 .comment-reply-title {
@@ -2029,17 +2058,127 @@ a.subcategory-tab {
     font-weight: 600;
     color: var(--gray-900);
     margin: 0 0 16px;
+    display: block;
+    position: relative;
+    padding-left: 52px;
+    min-height: 22px;
 }
 
+/* 默认态：左侧灰色"评论"标签，低调 */
+.comment-reply-title::before {
+    content: '评论';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 22px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-500, #6B7280);
+    background: var(--gray-100, #F3F4F6);
+    border: 1px solid var(--gray-200, #E5E7EB);
+    border-radius: 11px;
+}
+
+/* 回复状态：标签整体隐藏，让 WordPress 改写后的"回复给 <作者名>"文本独占标题位置，
+   不再被图标挤压或换行错乱；标题本身在回复态变红加粗，辨识度高 */
+#respond.navai-replying .comment-reply-title::before {
+    content: none;
+}
+
+/* 回复态：标题文字（"回复给 <作者名>"）贴左显示、变红加粗，
+   左侧让位给标签占位的 52px padding 必须清零，否则文本会被推到右侧大片空白之后、
+   视觉辨识度极低（这是用户"看不出在回复谁"的核心原因） */
+#respond.navai-replying .comment-reply-title {
+    padding-left: 0;
+    color: var(--primary-color, #E53935);
+    font-weight: 700;
+}
+
+/* 取消回复链接：放在标题下方独立一行，避免和"回复给 X"文本挤在一起 */
 .comment-reply-title small {
-    margin-left: 8px;
+    display: block;
+    margin-top: 8px;
     font-size: 13px;
     font-weight: 400;
+    color: var(--gray-500);
 }
 
 .comment-reply-title small a {
-    color: var(--gray-500);
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    color: var(--gray-600, #4B5563);
+    background: var(--gray-100, #F3F4F6);
+    border: 1px solid var(--gray-200, #E5E7EB);
+    border-radius: 10px;
     text-decoration: none;
+    font-size: 12px;
+    transition: all 0.15s;
+}
+.comment-reply-title small a:hover {
+    color: #fff;
+    background: var(--primary-color, #E53935);
+    border-color: var(--primary-color, #E53935);
+    text-decoration: none;
+}
+
+/* 取消回复按钮（核心 cancel_comment_reply_link() 输出，带内联 style="display:none"，
+   点"回复"后由 comment-reply.js 切为显示）：
+   用 !important 强覆盖内联 display 与浏览器默认链接样式，
+   样式拷贝"发表评论"提交按钮（.form-submit .submit）的实色块风格，
+   默认灰底次级、hover 变红与"发表评论"呼应，两按钮并排对齐 */
+#cancel-comment-reply-link {
+    display: inline-block !important;
+    margin-left: 12px;
+    padding: 10px 24px !important;
+    background: var(--gray-100, #F3F4F6) !important;
+    color: var(--gray-700, #374151) !important;
+    border: 1px solid var(--gray-200, #E5E7EB) !important;
+    border-radius: var(--radius-md) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    text-decoration: none !important;
+    vertical-align: middle;
+    transition: all 0.2s;
+}
+#cancel-comment-reply-link:hover {
+    background: var(--primary-color, #E53935) !important;
+    color: var(--white, #fff) !important;
+    border-color: var(--primary-color, #E53935) !important;
+    text-decoration: none !important;
+}
+
+/* 让"取消回复"和"发表评论"在同一行并排对齐（.form-submit 改为 flex 横排） */
+.form-submit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* "正在回复谁"提示条：回复态时在 .form-submit 顶部显示一条醒目的提示，
+   直接引用 WordPress 写入 #reply-title 的"回复给 X"文本，作为兜底视觉强化。
+   .form-submit 改为 flex 横排后，用 flex-basis:100% 让提示条独占第一行、按钮排在其下方 */
+#respond.navai-replying .form-submit::before {
+    content: "正在回复：" attr(data-navai-replying-to);
+    display: block;
+    flex-basis: 100%;
+    margin: 0 0 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-color, #E53935);
+    background: rgba(229, 57, 53, 0.08);
+    border-left: 3px solid var(--primary-color, #E53935);
+    border-radius: 4px;
 }
 
 .comment-form {

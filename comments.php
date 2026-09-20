@@ -186,9 +186,12 @@ function navai_comment_callback($comment, $args, $depth) {
 					<span class="reply-link">
 					<?php
 					comment_reply_link(array_merge($args, array(
-						'add_below' => $add_below,
-						'depth'     => $depth,
-						'max_depth' => $args['max_depth'],
+						'add_below'    => $add_below,
+						'depth'        => $depth,
+						'max_depth'    => $args['max_depth'],
+						// 点击"回复"后，comment-reply.js 会把 #reply-title 改写为该文案（%s 替换为目标评论作者名），
+						// 让用户明确知道正在回复哪一条
+						'reply_to_text'=> __('回复给 %s', 'navai'),
 					)));
 					?>
 					</span>
@@ -270,7 +273,6 @@ $is_logged_in = is_user_logged_in();
 				<label for="comment"><?php esc_html_e('评论内容', 'navai'); ?></label>
 				<textarea id="comment" name="comment" cols="45" rows="4" aria-required="true" placeholder="<?php esc_attr_e('输入评论内容...', 'navai'); ?>"></textarea>
 			</p>
-
 			<?php if (!$is_logged_in) : ?>
 			<div class="comment-form-row">
 				<p class="comment-form-author">
@@ -288,10 +290,17 @@ $is_logged_in = is_user_logged_in();
 			</div>
 			<?php endif; ?>
 
-			<p class="form-submit">
-				<button type="submit" class="submit"><?php esc_html_e('发表评论', 'navai'); ?></button>
-				<?php comment_id_fields(); ?>
-			</p>
+		<div class="form-submit">
+			<button type="submit" class="submit"><?php esc_html_e('发表评论', 'navai'); ?></button>
+			<?php
+			// 必须输出 #cancel-comment-reply-link（默认带 style="display:none"），
+			// 否则 WordPress 核心 comment-reply.js 的 init() 会因为找不到该元素而直接 return，
+			// 整条"点回复→表单移动→标题改写为'回复给 X'→取消回复"链路全部不生效
+			// link_text 改为"取消回复"，比默认的"点击这里取消回复"更简洁、不突兀
+			cancel_comment_reply_link(esc_html__('取消回复', 'navai'));
+			?>
+			<?php comment_id_fields(); ?>
+		</div>
 			<?php do_action('comment_form', get_the_ID()); ?>
 		</form>
 		<?php endif; ?>

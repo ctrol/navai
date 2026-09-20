@@ -472,6 +472,13 @@ function navai_enqueue_scripts() {
 		true
 	);
 
+	// 评论回复：加载 WordPress 自带的 comment-reply.js
+	// 不依赖 get_option('thread_comments')——即使后台关闭"允许嵌套评论"，
+	// 单条评论的回复（一级回复）仍应可用，避免整条回复链路因配置被关而全断
+	if (is_singular() && comments_open()) {
+		wp_enqueue_script('comment-reply');
+	}
+
 	// 本地化脚本 - 传递AJAX配置
 	wp_localize_script('navai-script', 'navaiAjax', array(
 		'ajaxurl'        => admin_url('admin-ajax.php'),
@@ -486,6 +493,67 @@ function navai_enqueue_scripts() {
 		'str_error'      => __('操作失败，请重试', 'navai'),
 		'str_no_results' => __('该分类下暂无AI工具', 'navai'),
 	));
+
+	// 评论回复状态强化：
+	// WordPress 的 comment-reply.js 点击"回复"后会：
+	//   1) 把 #respond 表单移动到目标评论下方
+	//   2) 把 #reply-title 文本改写为 "回复给 <作者名>"
+	//   3) 把静态存在的 #cancel-comment-reply-link 从 display:none 切换为显示（不新增节点）
+	// 因此降级方案不能靠 DOMNodeInserted/Removed，改用 MutationObserver 监听
+	// #cancel-comment-reply-link 的 style.display 变化，给 #respond 添加 .navai-replying 类，
+	// 并高亮被回复的那条评论（#respond 当前所在的 .comment 父容器），让"正在回复谁"一目了然。
+	// 仅在单页且开放评论时挂载，避免在首页等无表单页面产生无意义监听
+	if (is_singular() && comments_open()) {
+		wp_add_inline_script('navai-script', '(function(){
+			function initReplyEnhance() {
+				var cancel = document.getElementById("cancel-comment-reply-link");
+				if (!cancel) return;
+				function syncReplyingState() {
+					var visible = cancel.style.display !== "none";
+					var respond = document.getElementById("respond");
+					if (!respond) return;
+					// 切换 #respond 的回复态类
+					if (visible) respond.classList.add("navai-replying");
+					else respond.classList.remove("navai-replying");
+					// 高亮被回复的那条评论（#respond 被 comment-reply.js 移到目标评论的 .comment 容器下方）
+					document.querySelectorAll(".comment.navai-reply-target").forEach(function(el){
+						el.classList.remove("navai-reply-target");
+					});
+					if (visible) {
+						// 把"正在回复谁"的文案同步到 .form-submit 上，供 CSS ::before 提示条使用
+						var submit = respond.querySelector(".form-submit");
+						if (submit) {
+							var heading = document.getElementById("reply-title");
+							var headingText = heading ? heading.textContent.trim() : "";
+							submit.setAttribute("data-navai-replying-to", headingText);
+						}
+						var host = respond.parentNode;
+						// #respond 被移动后的直接父级就是被回复评论的 <div class="comment"> 或 <li class="comment">
+						while (host && host !== document.body) {
+							if (host.classList && host.classList.contains("comment")) {
+								host.classList.add("navai-reply-target");
+								break;
+							}
+							host = host.parentNode;
+						}
+					} else {
+						var submitClear = respond.querySelector(".form-submit");
+						if (submitClear) submitClear.removeAttribute("data-navai-replying-to");
+					}
+				}
+				// 监听 cancel 链接的 style 变化（comment-reply.js 只改 display，不增删节点）
+				var mo = new MutationObserver(syncReplyingState);
+				mo.observe(cancel, {attributes: true, attributeFilter: ["style"]});
+				// 首次同步
+				syncReplyingState();
+			}
+			if (document.readyState === "loading") {
+				document.addEventListener("DOMContentLoaded", initReplyEnhance);
+			} else {
+				initReplyEnhance();
+			}
+		})();');
+	}
 }
 add_action('wp_enqueue_scripts', 'navai_enqueue_scripts');
 
